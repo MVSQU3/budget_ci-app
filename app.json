@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Budget FCFA",
+    "slug": "budget-fcfa",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F4F3F8"
+    },
+    "ios": { "supportsTablet": false },
+    "android": { "package": "com.kvso.budgetfcfa" }
+  }
+}
