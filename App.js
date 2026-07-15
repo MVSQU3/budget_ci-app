@@ -1,13 +1,20 @@
-import React from 'react';
-import { Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  useFonts,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+  Poppins_800ExtraBold,
+} from '@expo-google-fonts/poppins';
 import { BudgetProvider } from './src/context/BudgetContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { colors } from './src/theme/theme';
+import { colors, fonts } from './src/theme/theme';
 
 import AccueilScreen from './src/screens/AccueilScreen';
 import TransactionsScreen from './src/screens/TransactionsScreen';
@@ -22,12 +29,13 @@ import VerificationScreen from './src/screens/VerificationScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+// Icônes vectorielles de la barre d'onglets (style fin des maquettes)
 const ICONES = {
-  Accueil: '🏠',
-  Transactions: '🧾',
-  Budgets: '🎯',
-  Stats: '📊',
-  Compte: '👤',
+  Accueil: ['home-outline', 'home'],
+  Transactions: ['receipt-outline', 'receipt'],
+  Budgets: ['flag-outline', 'flag'],
+  Stats: ['stats-chart-outline', 'stats-chart'],
+  Compte: ['person-outline', 'person'],
 };
 
 function Onglets() {
@@ -44,11 +52,13 @@ function Onglets() {
           height: 62,
           paddingBottom: 8,
         },
-        tabBarLabelStyle: { fontWeight: '600', fontSize: 10 },
-        tabBarIcon: ({ focused }) => (
-          <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>
-            {ICONES[route.name]}
-          </Text>
+        tabBarLabelStyle: { fontFamily: fonts.semi, fontSize: 10 },
+        tabBarIcon: ({ focused, color }) => (
+          <Ionicons
+            name={focused ? ICONES[route.name][1] : ICONES[route.name][0]}
+            size={22}
+            color={color}
+          />
         ),
       })}
     >
@@ -84,6 +94,15 @@ function Racine() {
 }
 
 export default function App() {
+  const [polices] = useFonts({
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Poppins_800ExtraBold,
+  });
+  if (!polices) return null; // splash le temps du chargement des polices
+
   return (
     <SafeAreaProvider>
       <AuthProvider>

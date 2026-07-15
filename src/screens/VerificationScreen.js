@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, shadow } from '../theme/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, shadow, fonts } from '../theme/theme';
 import Pave from '../components/Pave';
 import { useAuth } from '../context/AuthContext';
 
@@ -49,7 +50,7 @@ export default function VerificationScreen({ route, navigation }) {
     <SafeAreaView style={styles.safe}>
       <View style={styles.content}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-          <Text style={{ fontSize: 18 }}>←</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
 
         <Text style={styles.titre}>Code de{'\n'}vérification</Text>
@@ -92,21 +93,21 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center', ...shadow,
   },
-  titre: { fontSize: 28, fontWeight: '800', color: colors.text, marginTop: 20 },
-  sous: { color: colors.textSecondary, marginTop: 8, fontSize: 13 },
+  titre: { fontSize: 26, fontFamily: fonts.extra, color: colors.text, marginTop: 20 },
+  sous: { color: colors.textSecondary, marginTop: 8, fontSize: 13, fontFamily: fonts.regular },
   cases: { flexDirection: 'row', gap: 12, marginTop: 28, marginBottom: 8, justifyContent: 'center' },
   case: {
     width: 56, height: 56, borderRadius: 16, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center', ...shadow,
   },
   caseRemplie: { backgroundColor: colors.gradientTop },
-  caseText: { fontSize: 22, fontWeight: '800', color: colors.text },
-  erreur: { color: colors.expense, fontWeight: '600', textAlign: 'center', marginTop: 8 },
-  info: { color: colors.income, fontWeight: '600', textAlign: 'center', marginTop: 8 },
+  caseText: { fontSize: 22, fontFamily: fonts.extra, color: colors.text },
+  erreur: { color: colors.expense, fontFamily: fonts.semi, textAlign: 'center', marginTop: 8 },
+  info: { color: colors.income, fontFamily: fonts.semi, textAlign: 'center', marginTop: 8 },
   bouton: {
     backgroundColor: colors.dark, borderRadius: 26,
     paddingVertical: 16, alignItems: 'center', marginTop: 8,
   },
-  boutonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  lien: { color: colors.blue, fontWeight: '700', fontSize: 13, textAlign: 'center' },
+  boutonText: { color: '#fff', fontFamily: fonts.bold, fontSize: 14 },
+  lien: { color: colors.blue, fontFamily: fonts.bold, fontSize: 13, textAlign: 'center' },
 });

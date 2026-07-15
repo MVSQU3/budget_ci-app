@@ -1,29 +1,43 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { memeMois } from '../utils/format';
+import { memeMois, formatFCFA } from '../utils/format';
 import { api } from '../utils/api';
 import { useAuth } from './AuthContext';
+import { initNotifications, notifier, replanifierRecurrentes } from '../utils/notifications';
 
 const STORAGE_KEY = '@budget_fcfa_v2';
+const NOTIF_KEY = '@budget_fcfa_notifs';
 
+// Préférences de notifications (toutes activées par défaut)
+export const NOTIF_DEFAUT = {
+  depassement: true, // budget dépassé (immédiat)
+  seuil: true,       // 80 % du budget atteint (immédiat)
+  quotidien: true,   // rappel de saisie à 20h
+  hebdo: true,       // résumé le dimanche à 19h
+  mensuel: true,     // bilan le 1er du mois à 9h
+  tontine: true,     // rappel épargne le samedi à 9h
+  sync: true,        // données non synchronisées depuis 3 jours
+};
+
+// `icone` = nom d'icône Ionicons (https://icons.expo.fyi)
 export const CATEGORIES = [
-  { id: 'alimentation', nom: 'Alimentation', emoji: '🍚', couleur: '#F6A94A' },
-  { id: 'transport', nom: 'Transport', emoji: '🚌', couleur: '#5B8DEF' },
-  { id: 'logement', nom: 'Logement', emoji: '🏠', couleur: '#8B7CF6' },
-  { id: 'sante', nom: 'Santé', emoji: '💊', couleur: '#34C77B' },
-  { id: 'education', nom: 'Éducation', emoji: '📚', couleur: '#F65E7A' },
-  { id: 'communication', nom: 'Crédit / Internet', emoji: '📱', couleur: '#2BB8C4' },
-  { id: 'famille', nom: 'Famille & soutien', emoji: '🤝', couleur: '#B58AE6' },
-  { id: 'tontine', nom: 'Tontine / Épargne', emoji: '💰', couleur: '#E0B33C' },
-  { id: 'loisirs', nom: 'Loisirs', emoji: '🎉', couleur: '#FF8A65' },
-  { id: 'autre', nom: 'Autre', emoji: '📦', couleur: '#9A96A8' },
+  { id: 'alimentation', nom: 'Alimentation', icone: 'restaurant', couleur: '#F6A94A' },
+  { id: 'transport', nom: 'Transport', icone: 'bus', couleur: '#5B8DEF' },
+  { id: 'logement', nom: 'Logement', icone: 'home', couleur: '#8B7CF6' },
+  { id: 'sante', nom: 'Santé', icone: 'medkit', couleur: '#34C77B' },
+  { id: 'education', nom: 'Éducation', icone: 'book', couleur: '#F65E7A' },
+  { id: 'communication', nom: 'Crédit / Internet', icone: 'phone-portrait', couleur: '#2BB8C4' },
+  { id: 'famille', nom: 'Famille & soutien', icone: 'people', couleur: '#B58AE6' },
+  { id: 'tontine', nom: 'Tontine / Épargne', icone: 'wallet', couleur: '#E0B33C' },
+  { id: 'loisirs', nom: 'Loisirs', icone: 'game-controller', couleur: '#FF8A65' },
+  { id: 'autre', nom: 'Autre', icone: 'cube', couleur: '#9A96A8' },
 ];
 
 export const SOURCES_REVENU = [
-  { id: 'salaire', nom: 'Salaire', emoji: '💼' },
-  { id: 'commerce', nom: 'Commerce', emoji: '🛍️' },
-  { id: 'transfert', nom: 'Transfert reçu', emoji: '📲' },
-  { id: 'autre_revenu', nom: 'Autre', emoji: '➕' },
+  { id: 'salaire', nom: 'Salaire', icone: 'briefcase', couleur: '#34C77B' },
+  { id: 'commerce', nom: 'Commerce', icone: 'storefront', couleur: '#5B8DEF' },
+  { id: 'transfert', nom: 'Transfert reçu', icone: 'swap-horizontal', couleur: '#8B7CF6' },
+  { id: 'autre_revenu', nom: 'Autre', icone: 'add-circle', couleur: '#9A96A8' },
 ];
 
 const BudgetContext = createContext(null);
@@ -41,7 +55,9 @@ export function BudgetProvider({ children }) {
   const [charge, setCharge] = useState(false);
   const [syncEnCours, setSyncEnCours] = useState(false);
   const [derniereSync, setDerniereSync] = useState(null);
+  const [notifPrefs, setNotifPrefs] = useState(NOTIF_DEFAUT);
   const syncTimer = useRef(null);
+  const syncNotifie = useRef(false); // pour ne notifier la sync en retard qu'une fois
 
   // Chargement local
   useEffect(() => {
@@ -54,6 +70,9 @@ export function BudgetProvider({ children }) {
           setBudgets(data.budgets || {});
           setDerniereSync(data.derniereSync || null);
         }
+        const rawNotifs = await AsyncStorage.getItem(NOTIF_KEY);
+        if (rawNotifs) setNotifPrefs({ ...NOTIF_DEFAUT, ...JSON.parse(rawNotifs) });
+        await initNotifications(); // demande la permission
       } catch (e) {
         console.warn('Erreur de chargement', e);
       } finally {
@@ -70,6 +89,16 @@ export function BudgetProvider({ children }) {
       JSON.stringify({ transactions, budgets, derniereSync }),
     ).catch(() => {});
   }, [transactions, budgets, derniereSync, charge]);
+
+  // (Re)planification des notifications récurrentes quand les préférences changent
+  useEffect(() => {
+    if (!charge) return;
+    AsyncStorage.setItem(NOTIF_KEY, JSON.stringify(notifPrefs)).catch(() => {});
+    replanifierRecurrentes(notifPrefs);
+  }, [notifPrefs, charge]);
+
+  const definirNotifPref = (cle, valeur) =>
+    setNotifPrefs((prev) => ({ ...prev, [cle]: valeur }));
 
   // Synchronisation avec le serveur (best-effort, silencieuse si hors ligne)
   const synchroniser = useCallback(async () => {
@@ -93,6 +122,19 @@ export function BudgetProvider({ children }) {
       setDerniereSync(res.syncLe);
     } catch (e) {
       // Hors ligne ou serveur indisponible : on réessaiera plus tard, les données restent locales
+      const TROIS_JOURS = 3 * 24 * 60 * 60 * 1000;
+      if (
+        notifPrefs.sync &&
+        !syncNotifie.current &&
+        derniereSync &&
+        Date.now() - derniereSync > TROIS_JOURS
+      ) {
+        syncNotifie.current = true;
+        notifier(
+          'Synchronisation en attente',
+          "Tes données n'ont pas été synchronisées depuis plus de 3 jours. Vérifie ta connexion.",
+        );
+      }
     } finally {
       setSyncEnCours(false);
     }
@@ -123,6 +165,29 @@ export function BudgetProvider({ children }) {
     };
     setTransactions((prev) => [tx, ...prev]);
     planifierSync();
+
+    // Alertes de budget (immédiates) : seuil de 80 % et dépassement
+    if (type === 'depense') {
+      const limite = budgets[categorieId]?.montant || 0;
+      if (limite > 0) {
+        const avant = transactions
+          .filter((t) => !t.supprime && t.type === 'depense' && t.categorieId === categorieId && memeMois(t.date))
+          .reduce((s, t) => s + t.montant, 0);
+        const apres = avant + tx.montant;
+        const cat = getCategorie(categorieId);
+        if (notifPrefs.depassement && avant <= limite && apres > limite) {
+          notifier(
+            `Budget « ${cat.nom} » dépassé`,
+            `Tu as dépensé ${formatFCFA(apres)} sur un budget de ${formatFCFA(limite)}.`,
+          );
+        } else if (notifPrefs.seuil && avant < limite * 0.8 && apres >= limite * 0.8 && apres <= limite) {
+          notifier(
+            `Budget « ${cat.nom} » : 80 % atteint`,
+            `${formatFCFA(apres)} dépensés sur ${formatFCFA(limite)}. Reste ${formatFCFA(limite - apres)}.`,
+          );
+        }
+      }
+    }
   };
 
   const supprimerTransaction = (id) => {
@@ -184,6 +249,8 @@ export function BudgetProvider({ children }) {
         ajouterTransaction,
         supprimerTransaction,
         definirBudget,
+        notifPrefs,
+        definirNotifPref,
       }}
     >
       {children}

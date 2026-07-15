@@ -4,7 +4,8 @@ import {
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, radius, shadow } from '../theme/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, radius, shadow, fonts, gradients } from '../theme/theme';
 import { useAuth } from '../context/AuthContext';
 
 // Écran "Register" des maquettes
@@ -33,9 +34,9 @@ export default function InscriptionScreen({ navigation }) {
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          <View style={styles.hero}>
+          <LinearGradient colors={gradients.register} style={styles.hero}>
             <Text style={{ fontSize: 56 }}>🤖</Text>
-          </View>
+          </LinearGradient>
           <View style={styles.carte}>
             <Text style={styles.titre}>Inscription</Text>
 
@@ -98,15 +99,15 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: colors.background,
     borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24,
   },
-  titre: { fontSize: 26, fontWeight: '800', color: colors.text, textAlign: 'center', marginBottom: 24 },
+  titre: { fontSize: 24, fontFamily: fonts.extra, color: colors.text, textAlign: 'center', marginBottom: 24 },
   champs: { backgroundColor: colors.card, borderRadius: radius.card, ...shadow },
-  input: { paddingHorizontal: 18, paddingVertical: 16, fontSize: 15, color: colors.text },
+  input: { paddingHorizontal: 18, paddingVertical: 16, fontSize: 14, color: colors.text, fontFamily: fonts.regular },
   sep: { height: 1, backgroundColor: colors.border, marginHorizontal: 14 },
-  erreur: { color: colors.expense, marginTop: 12, fontWeight: '600', textAlign: 'center' },
+  erreur: { color: colors.expense, marginTop: 12, fontFamily: fonts.semi, textAlign: 'center' },
   bouton: {
     backgroundColor: colors.dark, borderRadius: radius.button,
     paddingVertical: 16, alignItems: 'center', marginTop: 24,
   },
-  boutonText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  lien: { color: colors.blue, fontWeight: '700', fontSize: 13, textAlign: 'center' },
+  boutonText: { color: '#fff', fontFamily: fonts.bold, fontSize: 14 },
+  lien: { color: colors.blue, fontFamily: fonts.bold, fontSize: 13, textAlign: 'center' },
 });

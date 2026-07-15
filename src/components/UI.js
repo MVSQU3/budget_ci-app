@@ -1,9 +1,25 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors, radius, shadow } from '../theme/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, radius, shadow, fonts, gradients } from '../theme/theme';
 
 export function Card({ children, style }) {
   return <View style={[styles.card, style]}>{children}</View>;
+}
+
+/** Carte avec fond dégradé pastel (ex. carte de solde), fidèle aux maquettes. */
+export function GradientCard({ children, style, colors: grad = gradients.solde }) {
+  return (
+    <LinearGradient
+      colors={grad}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.card, style]}
+    >
+      {children}
+    </LinearGradient>
+  );
 }
 
 export function DarkButton({ title, onPress, style, disabled }) {
@@ -19,7 +35,7 @@ export function DarkButton({ title, onPress, style, disabled }) {
   );
 }
 
-export function Chip({ label, active, onPress, color }) {
+export function Chip({ label, icone, active, onPress, color }) {
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -29,7 +45,12 @@ export function Chip({ label, active, onPress, color }) {
         active && { backgroundColor: color || colors.dark },
       ]}
     >
-      <Text style={[styles.chipText, active && { color: '#fff' }]}>{label}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {icone && (
+          <Ionicons name={icone} size={14} color={active ? '#fff' : color || colors.text} />
+        )}
+        <Text style={[styles.chipText, active && { color: '#fff' }]}>{label}</Text>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -51,7 +72,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     alignItems: 'center',
   },
-  darkBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  darkBtnText: { color: '#fff', fontFamily: fonts.bold, fontSize: 15 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 9,
@@ -61,6 +82,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     ...shadow,
   },
-  chipText: { color: colors.text, fontWeight: '600', fontSize: 13 },
-  screenTitle: { fontSize: 28, fontWeight: '800', color: colors.text },
+  chipText: { color: colors.text, fontFamily: fonts.semi, fontSize: 12 },
+  screenTitle: { fontSize: 26, fontFamily: fonts.extra, color: colors.text },
 });

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/theme';
 import { DarkButton, Chip } from '../components/UI';
 import Pave from '../components/Pave';
@@ -35,7 +36,7 @@ export default function SaisieScreen({ route, navigation }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-            <Text style={{ fontSize: 18 }}>←</Text>
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.titre}>Montant</Text>
           <View style={{ width: 40 }} />
@@ -67,7 +68,8 @@ export default function SaisieScreen({ route, navigation }) {
           {listeCategories.map((c) => (
             <Chip
               key={c.id}
-              label={`${c.emoji} ${c.nom}`}
+              label={c.nom}
+              icone={c.icone}
               active={categorieId === c.id}
               color={c.couleur}
               onPress={() => setCategorieId(c.id)}

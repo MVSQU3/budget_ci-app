@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, shadow } from '../theme/theme';
 import { ScreenTitle, DarkButton, Card } from '../components/UI';
 import { useBudget, CATEGORIES } from '../context/BudgetContext';
@@ -38,7 +39,10 @@ export default function BudgetsScreen() {
             <TouchableOpacity key={cat.id} onPress={() => ouvrir(cat)} activeOpacity={0.7}>
               <Card style={styles.ligne}>
                 <View style={styles.entete}>
-                  <Text style={styles.nom}>{cat.emoji}  {cat.nom}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name={cat.icone} size={16} color={cat.couleur} />
+                    <Text style={styles.nom}>{cat.nom}</Text>
+                  </View>
                   <Text style={styles.chiffres}>
                     {limite > 0
                       ? `${formatFCFA(depense)} / ${formatFCFA(limite)}`
@@ -64,7 +68,7 @@ export default function BudgetsScreen() {
                     </View>
                     {depasse && (
                       <Text style={styles.alerte}>
-                        ⚠️ Dépassé de {formatFCFA(depense - limite)}
+                        Dépassé de {formatFCFA(depense - limite)}
                       </Text>
                     )}
                     {proche && (
@@ -84,7 +88,7 @@ export default function BudgetsScreen() {
         <View style={styles.modalFond}>
           <View style={styles.modalCarte}>
             <Text style={styles.modalTitre}>
-              {modal?.emoji} Budget « {modal?.nom} »
+              Budget « {modal?.nom} »
             </Text>
             <TextInput
               style={styles.input}
