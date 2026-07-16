@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadow, fonts } from '../theme/theme';
@@ -56,8 +56,13 @@ export default function AccueilScreen({ navigation }) {
         {/* Transactions récentes */}
         <Text style={styles.section}>Récent</Text>
         {recentes.length === 0 ? (
-          <Card>
-            <Text style={styles.vide}>
+          <Card style={{ alignItems: 'center' }}>
+            <Image
+              source={require('../../assets/mascotte/vide.png')}
+              style={{ width: 110, height: 110 }}
+              resizeMode="contain"
+            />
+            <Text style={[styles.vide, { textAlign: 'center', marginTop: 8 }]}>
               Aucune transaction. Appuie sur « Dépense » ou « Revenu » pour commencer.
             </Text>
           </Card>

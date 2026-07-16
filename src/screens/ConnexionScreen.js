@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -36,7 +36,11 @@ export default function ConnexionScreen({ navigation }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <LinearGradient colors={gradients.login} style={styles.hero}>
-            <Text style={{ fontSize: 56 }}>🤖</Text>
+            <Image
+              source={require('../../assets/mascotte/connexion.png')}
+              style={styles.mascotte}
+              resizeMode="contain"
+            />
           </LinearGradient>
           <View style={styles.carte}>
             <Text style={styles.titre}>Connexion</Text>
@@ -89,6 +93,7 @@ export default function ConnexionScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#A99BF0' },
   hero: { height: 220, alignItems: 'center', justifyContent: 'center' },
+  mascotte: { width: 160, height: 160 },
   carte: {
     flex: 1, backgroundColor: colors.background,
     borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24,

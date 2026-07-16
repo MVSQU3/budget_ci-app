@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, SectionList, TouchableOpacity, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, SectionList, TouchableOpacity, Alert, StyleSheet, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
@@ -134,7 +134,14 @@ export default function TransactionsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
         ListEmptyComponent={
-          <Text style={styles.vide}>Aucune transaction sur cette période.</Text>
+          <View style={{ alignItems: 'center', marginTop: 24 }}>
+            <Image
+              source={require('../../assets/mascotte/vide.png')}
+              style={{ width: 110, height: 110 }}
+              resizeMode="contain"
+            />
+            <Text style={styles.vide}>Aucune transaction sur cette période.</Text>
+          </View>
         }
         renderSectionHeader={({ section }) => (
           <Text style={styles.jour}>{section.title}</Text>
@@ -196,6 +203,6 @@ const styles = StyleSheet.create({
   nom: { fontWeight: '700', color: colors.text, fontSize: 14 },
   sous: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
   montant: { fontWeight: '800', fontSize: 14 },
-  vide: { color: colors.textSecondary, marginTop: 24, textAlign: 'center' },
+  vide: { color: colors.textSecondary, marginTop: 8, textAlign: 'center' },
   astuce: { textAlign: 'center', color: colors.textSecondary, fontSize: 11, paddingBottom: 8 },
 });

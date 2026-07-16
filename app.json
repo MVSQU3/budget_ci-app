@@ -5,14 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/mascotte/icone.png",
     "splash": {
+      "image": "./assets/mascotte/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#F4F3F8"
     },
     "ios": {
       "supportsTablet": false
     },
     "android": {
-      "package": "com.kvso.budgetfcfa"
+      "package": "com.kvso.budgetfcfa",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/mascotte/icone.png",
+        "backgroundColor": "#EDE9FB"
+      }
     },
     "plugins": [
       "expo-status-bar",

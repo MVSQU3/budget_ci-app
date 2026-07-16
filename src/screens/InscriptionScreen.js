@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity,
+  View, Text, TextInput, StyleSheet, TouchableOpacity, Image,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -35,7 +35,11 @@ export default function InscriptionScreen({ navigation }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <LinearGradient colors={gradients.register} style={styles.hero}>
-            <Text style={{ fontSize: 56 }}>🤖</Text>
+            <Image
+              source={require('../../assets/mascotte/inscription.png')}
+              style={styles.mascotte}
+              resizeMode="contain"
+            />
           </LinearGradient>
           <View style={styles.carte}>
             <Text style={styles.titre}>Inscription</Text>
@@ -95,6 +99,7 @@ export default function InscriptionScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F2A9C4' },
   hero: { height: 200, alignItems: 'center', justifyContent: 'center' },
+  mascotte: { width: 150, height: 150 },
   carte: {
     flex: 1, backgroundColor: colors.background,
     borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadow, fonts } from '../theme/theme';
@@ -53,6 +53,11 @@ export default function VerificationScreen({ route, navigation }) {
           <Ionicons name="arrow-back" size={20} color={colors.text} />
         </TouchableOpacity>
 
+        <Image
+          source={require('../../assets/mascotte/otp.png')}
+          style={styles.mascotte}
+          resizeMode="contain"
+        />
         <Text style={styles.titre}>Code de{'\n'}vérification</Text>
         <Text style={styles.sous}>Un SMS avec le code a été envoyé au {telephone}</Text>
 
@@ -93,7 +98,8 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card,
     alignItems: 'center', justifyContent: 'center', ...shadow,
   },
-  titre: { fontSize: 26, fontFamily: fonts.extra, color: colors.text, marginTop: 20 },
+  mascotte: { width: 110, height: 110, alignSelf: 'center', marginTop: 4 },
+  titre: { fontSize: 26, fontFamily: fonts.extra, color: colors.text, marginTop: 8 },
   sous: { color: colors.textSecondary, marginTop: 8, fontSize: 13, fontFamily: fonts.regular },
   cases: { flexDirection: 'row', gap: 12, marginTop: 28, marginBottom: 8, justifyContent: 'center' },
   case: {
