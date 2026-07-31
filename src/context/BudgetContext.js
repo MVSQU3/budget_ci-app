@@ -3,10 +3,29 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { memeMois, formatFCFA } from '../utils/format';
 import { api } from '../utils/api';
 import { useAuth } from './AuthContext';
+import { useLicence } from './LicenceContext';
 import { initNotifications, notifier, replanifierRecurrentes } from '../utils/notifications';
 
 const STORAGE_KEY = '@budget_fcfa_v2';
 const NOTIF_KEY = '@budget_fcfa_notifs';
+const TONTINE_KEY = '@budget_fcfa_tontine';
+
+// Tontine — objectif d'épargne suivi (anneau, série, paliers)
+export const TONTINE = {
+  nom: 'Tontine',
+  objectif: 0,
+  cotisation: 0,
+  membres: 12,
+  jour: 'samedi',
+  prochainTour: 'samedi 12 septembre',
+};
+
+export const PALIERS_TONTINE = [
+  { titre: 'Premier tour bouclé', sous: '6 cotisations · 90 000 FCFA', seuil: 90000 },
+  { titre: 'Moitié de l’objectif', sous: '210 000 FCFA', seuil: 210000 },
+  { titre: 'Fonds d’urgence', sous: '300 000 FCFA', seuil: 300000 },
+  { titre: 'Objectif annuel', sous: '420 000 FCFA', seuil: 420000 },
+];
 
 // Préférences de notifications (toutes activées par défaut)
 export const NOTIF_DEFAUT = {
@@ -34,7 +53,7 @@ export const CATEGORIES = [
 ];
 
 export const SOURCES_REVENU = [
-  { id: 'salaire', nom: 'Salaire', icone: 'briefcase', couleur: '#34C77B' },
+  { id: 'salaire', nom: 'Salaire', icone: 'briefcase', couleur: '#56633f' },
   { id: 'commerce', nom: 'Commerce', icone: 'storefront', couleur: '#5B8DEF' },
   { id: 'transfert', nom: 'Transfert reçu', icone: 'swap-horizontal', couleur: '#8B7CF6' },
   { id: 'autre_revenu', nom: 'Autre', icone: 'add-circle', couleur: '#9A96A8' },
@@ -50,12 +69,18 @@ const BudgetContext = createContext(null);
  */
 export function BudgetProvider({ children }) {
   const { token } = useAuth();
+  const { enregistrerJeton } = useLicence();
   const [transactions, setTransactions] = useState([]); // inclut les tombstones
   const [budgets, setBudgets] = useState({}); // { categorieId: { montant, majLe } }
   const [charge, setCharge] = useState(false);
   const [syncEnCours, setSyncEnCours] = useState(false);
   const [derniereSync, setDerniereSync] = useState(null);
+  // null = tout va bien ; sinon { type: 'reseau' | 'serveur' | 'auth', statut, message }
+  const [syncErreur, setSyncErreur] = useState(null);
   const [notifPrefs, setNotifPrefs] = useState(NOTIF_DEFAUT);
+  const [tontine, setTontine] = useState({ epargne: 0, serie: 0 });
+  const [toast, setToast] = useState(null);
+  const toastTimer = useRef(null);
   const syncTimer = useRef(null);
   const syncNotifie = useRef(false); // pour ne notifier la sync en retard qu'une fois
 
@@ -72,6 +97,8 @@ export function BudgetProvider({ children }) {
         }
         const rawNotifs = await AsyncStorage.getItem(NOTIF_KEY);
         if (rawNotifs) setNotifPrefs({ ...NOTIF_DEFAUT, ...JSON.parse(rawNotifs) });
+        const rawTontine = await AsyncStorage.getItem(TONTINE_KEY);
+        if (rawTontine) setTontine(JSON.parse(rawTontine));
         await initNotifications(); // demande la permission
       } catch (e) {
         console.warn('Erreur de chargement', e);
@@ -97,11 +124,31 @@ export function BudgetProvider({ children }) {
     replanifierRecurrentes(notifPrefs);
   }, [notifPrefs, charge]);
 
+  // Sauvegarde de la tontine
+  useEffect(() => {
+    if (!charge) return;
+    AsyncStorage.setItem(TONTINE_KEY, JSON.stringify(tontine)).catch(() => {});
+  }, [tontine, charge]);
+
   const definirNotifPref = (cle, valeur) =>
     setNotifPrefs((prev) => ({ ...prev, [cle]: valeur }));
 
-  // Synchronisation avec le serveur (best-effort, silencieuse si hors ligne)
-  const synchroniser = useCallback(async () => {
+  // Bandeau éphémère en bas d'écran (2,4 s), comme dans le design
+  const flash = useCallback((message) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = setTimeout(() => setToast(null), 2400);
+  }, []);
+
+  useEffect(() => () => toastTimer.current && clearTimeout(toastTimer.current), []);
+
+  /**
+   * Synchronisation avec le serveur.
+   * Hors ligne (`reseau: true`) : silencieux et normal, les données restent locales.
+   * Erreur renvoyée par le serveur : remontée dans `syncErreur` — jamais avalée,
+   * sinon une panne de sauvegarde passe inaperçue jusqu'à la perte des données.
+   */
+  const synchroniser = useCallback(async ({ manuelle = false } = {}) => {
     if (!token) return;
     setSyncEnCours(true);
     try {
@@ -120,25 +167,47 @@ export function BudgetProvider({ children }) {
       });
       setBudgets(nouveauxBudgets);
       setDerniereSync(res.syncLe);
+
+      // Chaque sync réussie rafraîchit la licence et repousse la tolérance hors ligne
+      if (res.abonnement?.licence) await enregistrerJeton(res.abonnement.licence);
+
+      setSyncErreur(null);
+      syncNotifie.current = false;
+      if (manuelle) flash('Données synchronisées');
     } catch (e) {
-      // Hors ligne ou serveur indisponible : on réessaiera plus tard, les données restent locales
-      const TROIS_JOURS = 3 * 24 * 60 * 60 * 1000;
-      if (
-        notifPrefs.sync &&
-        !syncNotifie.current &&
-        derniereSync &&
-        Date.now() - derniereSync > TROIS_JOURS
-      ) {
-        syncNotifie.current = true;
-        notifier(
-          'Synchronisation en attente',
-          "Tes données n'ont pas été synchronisées depuis plus de 3 jours. Vérifie ta connexion.",
+      if (e.reseau) {
+        // Vraiment hors ligne : cas nominal, on réessaiera plus tard
+        setSyncErreur({ type: 'reseau', message: e.message });
+        if (manuelle) flash('Hors ligne — la sauvegarde se fera au retour du réseau');
+
+        const TROIS_JOURS = 3 * 24 * 60 * 60 * 1000;
+        if (
+          notifPrefs.sync &&
+          !syncNotifie.current &&
+          derniereSync &&
+          Date.now() - derniereSync > TROIS_JOURS
+        ) {
+          syncNotifie.current = true;
+          notifier(
+            'Synchronisation en attente',
+            "Tes données n'ont pas été synchronisées depuis plus de 3 jours. Vérifie ta connexion.",
+          );
+        }
+      } else {
+        // Le serveur a répondu une erreur : anomalie, il faut que ça se voie
+        const type = e.statut === 401 ? 'auth' : 'serveur';
+        setSyncErreur({ type, statut: e.statut, message: e.message });
+        console.warn(`[sync] échec serveur ${e.statut ?? ''} : ${e.message}`);
+        flash(
+          type === 'auth'
+            ? 'Session expirée — reconnecte-toi pour sauvegarder'
+            : `Échec de la sauvegarde : ${e.message}`,
         );
       }
     } finally {
       setSyncEnCours(false);
     }
-  }, [token, transactions, budgets]);
+  }, [token, transactions, budgets, notifPrefs.sync, derniereSync, flash, enregistrerJeton]);
 
   // Sync au démarrage / à la connexion
   useEffect(() => {
@@ -166,6 +235,11 @@ export function BudgetProvider({ children }) {
     setTransactions((prev) => [tx, ...prev]);
     planifierSync();
 
+    // Une dépense « Tontine / Épargne » alimente l'objectif d'épargne
+    if (type === 'depense' && categorieId === 'tontine') {
+      setTontine((t) => ({ ...t, epargne: t.epargne + tx.montant }));
+    }
+
     // Alertes de budget (immédiates) : seuil de 80 % et dépassement
     if (type === 'depense') {
       const limite = budgets[categorieId]?.montant || 0;
@@ -188,6 +262,20 @@ export function BudgetProvider({ children }) {
         }
       }
     }
+  };
+
+  // Cotisation hebdomadaire : une transaction + l'épargne et la série qui montent
+  const cotiserTontine = () => {
+    ajouterTransaction({
+      type: 'depense',
+      montant: TONTINE.cotisation,
+      categorieId: 'tontine',
+      note: `cotisation ${TONTINE.jour}`,
+    });
+    // `ajouterTransaction` a déjà crédité l'épargne : ici on ne monte que la série
+    const serie = tontine.serie + 1;
+    setTontine((t) => ({ ...t, serie }));
+    flash(`Cotisation enregistrée · série de ${serie} semaines 🔥`);
   };
 
   const supprimerTransaction = (id) => {
@@ -236,15 +324,33 @@ export function BudgetProvider({ children }) {
     return { revenus, depenses, solde: revenus - depenses, soldeTotal, parCategorie };
   }, [visibles]);
 
+  // Données dérivées de la tontine pour l'anneau et les paliers
+  const tontineInfos = useMemo(() => {
+    const ratio = Math.min(tontine.epargne / TONTINE.objectif, 1);
+    return {
+      ...tontine,
+      objectif: TONTINE.objectif,
+      ratio,
+      pourcentage: Math.round(ratio * 100),
+      reste: Math.max(TONTINE.objectif - tontine.epargne, 0),
+      paliers: PALIERS_TONTINE.map((p) => ({ ...p, atteint: tontine.epargne >= p.seuil })),
+    };
+  }, [tontine]);
+
   return (
     <BudgetContext.Provider
       value={{
         transactions: visibles,
         budgets: budgetsSimples,
         stats,
+        tontine: tontineInfos,
+        cotiserTontine,
+        toast,
+        flash,
         charge,
         syncEnCours,
         derniereSync,
+        syncErreur,
         synchroniser,
         ajouterTransaction,
         supprimerTransaction,

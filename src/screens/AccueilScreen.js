@@ -1,135 +1,221 @@
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, shadow, fonts } from '../theme/theme';
-import { Card, GradientCard, ScreenTitle } from '../components/UI';
+import { colors, shadow, shadowMoyenne, fonts } from '../theme/theme';
+import { Card, GradientCard, ScreenTitle, TitreSection, ActionRonde } from '../components/UI';
+import AnneauTontine from '../components/AnneauTontine';
+import FeuilleTontine from '../components/FeuilleTontine';
 import { useBudget, getCategorie } from '../context/BudgetContext';
+import { useAuth } from '../context/AuthContext';
 import { formatFCFA, formatSigned, formatHeure, moisCourant } from '../utils/format';
 
+const salutation = () => {
+  const h = new Date().getHours();
+  if (h < 12) return 'Bonjour';
+  if (h < 17) return 'Bon après-midi';
+  return 'Bonsoir';
+};
+
 export default function AccueilScreen({ navigation }) {
-  const { stats, transactions } = useBudget();
+  const { stats, transactions, tontine, cotiserTontine } = useBudget();
+  const { utilisateur } = useAuth();
+  const [tontineOuverte, setTontineOuverte] = useState(false);
   const recentes = transactions.slice(0, 5);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ScreenTitle>Accueil</ScreenTitle>
+        {/* En-tête : salutation + cloche de notifications */}
+        <View style={styles.entete}>
+          <View>
+            <Text style={styles.salut}>
+              {salutation()} {utilisateur?.nomUtilisateur || ''}
+            </Text>
+            <ScreenTitle>Accueil</ScreenTitle>
+          </View>
+          <View style={styles.cloche}>
+            <Ionicons name="notifications" size={19} color={colors.text} />
+            <View style={styles.pastilleCloche} />
+          </View>
+        </View>
 
-        {/* Solde — style "Total Balance" des maquettes */}
-        <GradientCard style={styles.soldeCard}>
+        {/* Solde total + raccourcis */}
+        <GradientCard style={{ marginTop: 18 }}>
           <Text style={styles.soldeLabel}>Solde total</Text>
           <Text style={styles.soldeMontant}>{formatFCFA(stats.soldeTotal)}</Text>
           <View style={styles.actionsRow}>
-            <ActionBouton
-              icone="arrow-up" label="Dépense" color={colors.expense}
+            <ActionRonde
+              icone="arrow-up" label="Dépense" color={colors.accentFonce}
               onPress={() => navigation.navigate('Saisie', { type: 'depense' })}
             />
-            <ActionBouton
-              icone="arrow-down" label="Revenu" color={colors.income}
+            <ActionRonde
+              icone="arrow-down" label="Revenu" color={colors.vert}
               onPress={() => navigation.navigate('Saisie', { type: 'revenu' })}
             />
-            <ActionBouton
-              icone="flag" label="Budgets" color={colors.accent}
+            <ActionRonde
+              icone="flag" label="Budgets" color={colors.vertClair}
               onPress={() => navigation.navigate('Budgets')}
             />
           </View>
         </GradientCard>
 
+        {/* Tontine : objectif suivi, en 2ᵉ place comme dans le design */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => setTontineOuverte(true)}
+          style={styles.tontine}
+        >
+          <View style={styles.tontineBlob} pointerEvents="none" />
+          <AnneauTontine ratio={tontine.ratio} pourcentage={tontine.pourcentage} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.tontineSurtitre}>Tontine du quartier</Text>
+            <Text style={styles.tontineMontant}>{formatFCFA(tontine.epargne)}</Text>
+            <Text style={styles.tontineDetail}>
+              sur {formatFCFA(tontine.objectif)} · {formatFCFA(tontine.reste)} restants
+            </Text>
+            <View style={styles.serie}>
+              <Ionicons name="flame" size={13} color={colors.accentClair} />
+              <Text style={styles.serieTexte}>{tontine.serie} semaines d'affilée</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+
         {/* Résumé du mois */}
-        <Text style={styles.section}>Ce mois — {moisCourant()}</Text>
+        <View style={styles.enteteSection}>
+          <TitreSection>Ce mois</TitreSection>
+          <Text style={styles.moisLabel}>{moisCourant()}</Text>
+        </View>
         <View style={styles.row}>
           <Card style={styles.miniCard}>
             <Text style={styles.miniLabel}>Revenus</Text>
-            <Text style={[styles.miniMontant, { color: colors.income }]}>
+            <Text style={[styles.miniMontant, { color: colors.vert }]}>
               {formatFCFA(stats.revenus)}
             </Text>
           </Card>
           <Card style={styles.miniCard}>
             <Text style={styles.miniLabel}>Dépenses</Text>
-            <Text style={[styles.miniMontant, { color: colors.expense }]}>
+            <Text style={[styles.miniMontant, { color: colors.accentFonce }]}>
               {formatFCFA(stats.depenses)}
             </Text>
           </Card>
         </View>
 
         {/* Transactions récentes */}
-        <Text style={styles.section}>Récent</Text>
-        {recentes.length === 0 ? (
-          <Card style={{ alignItems: 'center' }}>
-            <Image
-              source={require('../../assets/mascotte/vide.png')}
-              style={{ width: 110, height: 110 }}
-              resizeMode="contain"
-            />
-            <Text style={[styles.vide, { textAlign: 'center', marginTop: 8 }]}>
+        <View style={styles.enteteSection}>
+          <TitreSection>Récent</TitreSection>
+          <TouchableOpacity onPress={() => navigation.navigate('Transactions')}>
+            <Text style={styles.toutVoir}>Tout voir</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Card style={styles.listeRecente}>
+          {recentes.length === 0 ? (
+            <Text style={styles.vide}>
               Aucune transaction. Appuie sur « Dépense » ou « Revenu » pour commencer.
             </Text>
-          </Card>
-        ) : (
-          <Card style={{ paddingVertical: 4 }}>
-            {recentes.map((t) => {
+          ) : (
+            recentes.map((t) => {
               const cat = getCategorie(t.categorieId);
               return (
                 <View key={t.id} style={styles.txRow}>
-                  <View style={[styles.txIcon, { backgroundColor: (cat.couleur || colors.income) + '22' }]}>
-                    <Ionicons name={cat.icone} size={18} color={cat.couleur || colors.income} />
+                  <View style={[styles.txIcon, { backgroundColor: cat.couleur + '26' }]}>
+                    <Ionicons name={cat.icone} size={19} color={cat.couleur} />
                   </View>
-                  <View style={{ flex: 1 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={styles.txNom}>{cat.nom}</Text>
-                    <Text style={styles.txHeure}>{formatHeure(t.date)}</Text>
+                    <Text style={styles.txHeure}>
+                      {formatHeure(t.date)}{t.note ? ` · ${t.note}` : ''}
+                    </Text>
                   </View>
-                  <Text style={[styles.txMontant, { color: t.type === 'revenu' ? colors.income : colors.expense }]}>
+                  <Text
+                    style={[
+                      styles.txMontant,
+                      { color: t.type === 'revenu' ? colors.vert : colors.accentFonce },
+                    ]}
+                  >
                     {formatSigned(t.montant, t.type)}
                   </Text>
                 </View>
               );
-            })}
-          </Card>
-        )}
+            })
+          )}
+        </Card>
       </ScrollView>
-    </SafeAreaView>
-  );
-}
 
-// Boutons ronds blancs avec icône colorée, comme Send/Receive/Buy des maquettes
-function ActionBouton({ icone, label, color, onPress }) {
-  return (
-    <TouchableOpacity style={styles.action} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.actionIcon}>
-        <Ionicons name={icone} size={20} color={color} />
-      </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-    </TouchableOpacity>
+      <FeuilleTontine
+        visible={tontineOuverte}
+        onClose={() => setTontineOuverte(false)}
+        tontine={tontine}
+        onCotiser={() => {
+          setTontineOuverte(false);
+          cotiserTontine();
+        }}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingBottom: 40 },
-  soldeCard: { marginTop: 16, padding: 20 },
-  soldeLabel: { color: colors.textSecondary, fontSize: 13, fontFamily: fonts.semi },
-  soldeMontant: { fontSize: 30, fontFamily: fonts.extra, color: colors.text, marginTop: 4 },
-  actionsRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 18 },
-  action: { alignItems: 'center' },
-  actionIcon: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', ...shadow,
+  content: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 130 },
+  entete: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  salut: { fontSize: 13, color: colors.textSecondary, fontFamily: fonts.semi },
+  cloche: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.card,
+    alignItems: 'center', justifyContent: 'center', ...shadow,
   },
-  actionLabel: { marginTop: 6, fontSize: 12, fontFamily: fonts.semi, color: colors.text },
-  section: { fontSize: 16, fontFamily: fonts.extra, color: colors.text, marginTop: 24, marginBottom: 12 },
+  pastilleCloche: {
+    position: 'absolute', top: 9, right: 10, width: 9, height: 9, borderRadius: 5,
+    backgroundColor: colors.accent, borderWidth: 2, borderColor: '#fff',
+  },
+
+  soldeLabel: { fontSize: 12.5, fontFamily: fonts.bold, color: colors.textSecondary },
+  soldeMontant: { fontFamily: fonts.display, fontSize: 34, color: colors.text, marginTop: 4 },
+  actionsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+
+  tontine: {
+    marginTop: 14, borderRadius: 28, padding: 20,
+    backgroundColor: colors.vert, flexDirection: 'row', gap: 18,
+    alignItems: 'center', overflow: 'hidden', ...shadowMoyenne,
+  },
+  tontineBlob: {
+    position: 'absolute', width: 170, height: 170, borderRadius: 85,
+    backgroundColor: 'rgba(240,250,225,0.07)', bottom: -90, right: -40,
+  },
+  tontineSurtitre: {
+    fontSize: 11.5, letterSpacing: 0.7, textTransform: 'uppercase',
+    color: colors.surVert, opacity: 0.8, fontFamily: fonts.bold,
+  },
+  tontineMontant: { fontFamily: fonts.display, fontSize: 19, color: colors.surVert, marginTop: 3 },
+  tontineDetail: { fontSize: 12, color: colors.surVert, opacity: 0.85, marginTop: 3, fontFamily: fonts.regular },
+  serie: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 9,
+    alignSelf: 'flex-start', borderRadius: 999,
+    backgroundColor: 'rgba(240,250,225,0.16)', paddingHorizontal: 11, paddingVertical: 5,
+  },
+  serieTexte: { fontSize: 11.5, color: colors.surVert, fontFamily: fonts.bold },
+
+  enteteSection: {
+    flexDirection: 'row', alignItems: 'baseline',
+    justifyContent: 'space-between', marginTop: 24, marginBottom: 12,
+  },
+  moisLabel: { fontSize: 12, color: colors.textSecondary, fontFamily: fonts.semi },
+  toutVoir: { fontSize: 12.5, color: colors.accentLien, fontFamily: fonts.bold },
+
   row: { flexDirection: 'row', gap: 12 },
-  miniCard: { flex: 1 },
-  miniLabel: { color: colors.textSecondary, fontSize: 12, fontFamily: fonts.semi },
-  miniMontant: { fontSize: 16, fontFamily: fonts.extra, marginTop: 4 },
-  vide: { color: colors.textSecondary, lineHeight: 20, fontFamily: fonts.regular },
-  txRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  miniCard: { flex: 1, borderRadius: 22 },
+  miniLabel: { fontSize: 11.5, color: colors.textSecondary, fontFamily: fonts.bold },
+  miniMontant: { fontSize: 17, fontFamily: fonts.extra, marginTop: 4 },
+
+  listeRecente: { borderRadius: 24, paddingVertical: 6, paddingHorizontal: 16 },
+  vide: { color: colors.textMuted, fontSize: 13, lineHeight: 19, paddingVertical: 12, fontFamily: fonts.regular },
+  txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   txIcon: {
     width: 42, height: 42, borderRadius: 21,
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    alignItems: 'center', justifyContent: 'center',
   },
-  txNom: { fontFamily: fonts.bold, color: colors.text, fontSize: 13 },
-  txHeure: { color: colors.textSecondary, fontSize: 11, marginTop: 2, fontFamily: fonts.regular },
+  txNom: { fontFamily: fonts.bold, color: colors.text, fontSize: 13.5 },
+  txHeure: { color: colors.textMuted, fontSize: 11, marginTop: 2, fontFamily: fonts.regular },
   txMontant: { fontFamily: fonts.extra, fontSize: 13 },
 });

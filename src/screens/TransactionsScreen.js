@@ -1,20 +1,19 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, SectionList, TouchableOpacity, Alert, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, SectionList, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadow } from '../theme/theme';
-import { ScreenTitle } from '../components/UI';
+import { colors, shadow, fonts } from '../theme/theme';
+import { ScreenTitle, ChipFiltre } from '../components/UI';
 import { useBudget, getCategorie } from '../context/BudgetContext';
-import { formatSigned, formatDate, formatHeure } from '../utils/format';
+import { formatSigned, formatDate, formatHeure, formatJour } from '../utils/format';
 
-// Filtres disponibles
 const FILTRES = [
   { id: 'tout', label: 'Tout' },
   { id: 'jour', label: "Aujourd'hui" },
   { id: '7j', label: '7 jours' },
   { id: 'mois', label: 'Ce mois' },
-  { id: 'date', label: 'Date' },
+  { id: 'date', label: 'Date', icone: 'calendar-outline' },
 ];
 
 const memeJour = (a, b) =>
@@ -22,11 +21,10 @@ const memeJour = (a, b) =>
   a.getMonth() === b.getMonth() &&
   a.getFullYear() === b.getFullYear();
 
-// Historique groupé par jour — style "Total Wallet Value > History" des maquettes
+// Historique groupé par jour, une carte blanche par transaction
 export default function TransactionsScreen() {
-  const { transactions, supprimerTransaction } = useBudget();
+  const { transactions, supprimerTransaction, flash } = useBudget();
   const [filtre, setFiltre] = useState('tout');
-  // Date sélectionnée pour le mode « Date » (choisie via le calendrier natif)
   const [dateChoisie, setDateChoisie] = useState(new Date());
   const [calendrierOuvert, setCalendrierOuvert] = useState(false);
 
@@ -35,16 +33,11 @@ export default function TransactionsScreen() {
     return transactions.filter((t) => {
       const d = new Date(t.date);
       switch (filtre) {
-        case 'jour':
-          return memeJour(d, now);
-        case '7j':
-          return now - d <= 7 * 24 * 60 * 60 * 1000;
-        case 'mois':
-          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-        case 'date':
-          return memeJour(d, dateChoisie);
-        default:
-          return true;
+        case 'jour': return memeJour(d, now);
+        case '7j': return now - d <= 7 * 24 * 60 * 60 * 1000;
+        case 'mois': return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        case 'date': return memeJour(d, dateChoisie);
+        default: return true;
       }
     });
   }, [transactions, filtre, dateChoisie]);
@@ -52,7 +45,7 @@ export default function TransactionsScreen() {
   const sections = useMemo(() => {
     const parJour = {};
     filtrees.forEach((t) => {
-      const jour = formatDate(t.date);
+      const jour = formatJour(t.date);
       (parJour[jour] = parJour[jour] || []).push(t);
     });
     return Object.entries(parJour).map(([title, data]) => ({ title, data }));
@@ -60,19 +53,17 @@ export default function TransactionsScreen() {
 
   const choisirFiltre = (id) => {
     setFiltre(id);
-    if (id === 'date') setCalendrierOuvert(true); // ouvre le calendrier natif
+    if (id === 'date') setCalendrierOuvert(true);
   };
 
-  const confirmerSuppression = (t) => {
-    Alert.alert('Supprimer', 'Supprimer cette transaction ?', [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Supprimer', style: 'destructive', onPress: () => supprimerTransaction(t.id) },
-    ]);
+  const supprimer = (t) => {
+    supprimerTransaction(t.id);
+    flash('Transaction supprimée');
   };
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={{ padding: 20, paddingBottom: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 10 }}>
         <ScreenTitle>Transactions</ScreenTitle>
       </View>
 
@@ -81,49 +72,38 @@ export default function TransactionsScreen() {
         horizontal
         showsHorizontalScrollIndicator={false}
         style={styles.filtres}
-        contentContainerStyle={{ paddingHorizontal: 20 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 4 }}
       >
         {FILTRES.map((f) => (
-          <TouchableOpacity
+          <ChipFiltre
             key={f.id}
-            style={[styles.filtre, filtre === f.id && styles.filtreActif]}
+            label={f.label}
+            icone={f.icone}
+            active={filtre === f.id}
             onPress={() => choisirFiltre(f.id)}
-            activeOpacity={0.8}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              {f.id === 'date' && (
-                <Ionicons name="calendar-outline" size={14} color={filtre === f.id ? '#fff' : colors.text} />
-              )}
-              <Text style={[styles.filtreText, filtre === f.id && { color: '#fff' }]}>
-                {f.label}
-              </Text>
-            </View>
-          </TouchableOpacity>
+          />
         ))}
       </ScrollView>
 
-      {/* Date choisie (mode Date) — tape dessus pour rouvrir le calendrier */}
+      {/* Jour sélectionné (mode « Date ») */}
       {filtre === 'date' && (
         <TouchableOpacity
           style={styles.selecteurJour}
           onPress={() => setCalendrierOuvert(true)}
           activeOpacity={0.7}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Ionicons name="calendar-outline" size={16} color={colors.text} />
-            <Text style={styles.dateTexte}>{formatDate(dateChoisie.toISOString())}</Text>
-          </View>
+          <Ionicons name="calendar-outline" size={16} color={colors.text} />
+          <Text style={styles.dateTexte}>{formatDate(dateChoisie.toISOString())}</Text>
         </TouchableOpacity>
       )}
 
-      {/* Calendrier natif */}
       {calendrierOuvert && (
         <DateTimePicker
           value={dateChoisie}
           mode="date"
           maximumDate={new Date()}
           onChange={(event, date) => {
-            setCalendrierOuvert(false); // Android : le picker se ferme après le choix
+            setCalendrierOuvert(false);
             if (event.type !== 'dismissed' && date) setDateChoisie(date);
           }}
         />
@@ -132,16 +112,10 @@ export default function TransactionsScreen() {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+        contentContainerStyle={styles.liste}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
-          <View style={{ alignItems: 'center', marginTop: 24 }}>
-            <Image
-              source={require('../../assets/mascotte/vide.png')}
-              style={{ width: 110, height: 110 }}
-              resizeMode="contain"
-            />
-            <Text style={styles.vide}>Aucune transaction sur cette période.</Text>
-          </View>
+          <Text style={styles.vide}>Aucune transaction sur cette période.</Text>
         }
         renderSectionHeader={({ section }) => (
           <Text style={styles.jour}>{section.title}</Text>
@@ -149,60 +123,69 @@ export default function TransactionsScreen() {
         renderItem={({ item }) => {
           const cat = getCategorie(item.categorieId);
           return (
-            <TouchableOpacity
-              style={styles.row}
-              onLongPress={() => confirmerSuppression(item)}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.icon, { backgroundColor: (cat.couleur || colors.income) + '22' }]}>
-                <Ionicons name={cat.icone} size={18} color={cat.couleur || colors.income} />
+            <View style={styles.row}>
+              <View style={[styles.icon, { backgroundColor: cat.couleur + '26' }]}>
+                <Ionicons name={cat.icone} size={19} color={cat.couleur} />
               </View>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.nom}>{cat.nom}</Text>
                 <Text style={styles.sous}>
                   {formatHeure(item.date)}{item.note ? ` · ${item.note}` : ''}
                 </Text>
               </View>
-              <Text style={[styles.montant, { color: item.type === 'revenu' ? colors.income : colors.expense }]}>
+              <Text
+                style={[
+                  styles.montant,
+                  { color: item.type === 'revenu' ? colors.vert : colors.accentFonce },
+                ]}
+              >
                 {formatSigned(item.montant, item.type)}
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => supprimer(item)}
+                style={styles.supprimer}
+                activeOpacity={0.7}
+                accessibilityLabel="Supprimer la transaction"
+              >
+                <Ionicons name="trash" size={13} color={colors.accentLien} />
+              </TouchableOpacity>
+            </View>
           );
         }}
       />
-      {filtrees.length > 0 && (
-        <Text style={styles.astuce}>Appui long sur une ligne pour supprimer</Text>
-      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
-  filtres: { flexGrow: 0, marginBottom: 4 },
-  filtre: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 18,
-    backgroundColor: colors.card, marginRight: 8, ...shadow,
-  },
-  filtreActif: { backgroundColor: colors.dark },
-  filtreText: { fontWeight: '600', fontSize: 13, color: colors.text },
+  filtres: { flexGrow: 0, marginTop: 14 },
   selecteurJour: {
-    alignSelf: 'center', marginTop: 8, paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 18, backgroundColor: colors.card, ...shadow,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    alignSelf: 'center', marginTop: 10, paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 999, backgroundColor: colors.card, ...shadow,
   },
-  dateTexte: { fontWeight: '700', color: colors.text, fontSize: 14, textAlign: 'center' },
-  jour: { color: colors.textSecondary, fontWeight: '700', fontSize: 13, marginTop: 16, marginBottom: 8 },
+  dateTexte: { fontFamily: fonts.bold, color: colors.text, fontSize: 14 },
+  liste: { paddingHorizontal: 20, paddingBottom: 130 },
+  jour: {
+    color: colors.textMuted, fontFamily: fonts.extra, fontSize: 12.5,
+    marginTop: 18, marginBottom: 9,
+  },
   row: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card,
-    borderRadius: 16, padding: 12, marginBottom: 8, ...shadow,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.card, borderRadius: 20,
+    paddingVertical: 12, paddingHorizontal: 14, marginBottom: 8, ...shadow,
   },
   icon: {
     width: 42, height: 42, borderRadius: 21,
-    alignItems: 'center', justifyContent: 'center', marginRight: 12,
+    alignItems: 'center', justifyContent: 'center',
   },
-  nom: { fontWeight: '700', color: colors.text, fontSize: 14 },
-  sous: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
-  montant: { fontWeight: '800', fontSize: 14 },
-  vide: { color: colors.textSecondary, marginTop: 8, textAlign: 'center' },
-  astuce: { textAlign: 'center', color: colors.textSecondary, fontSize: 11, paddingBottom: 8 },
+  nom: { fontFamily: fonts.bold, color: colors.text, fontSize: 13.5 },
+  sous: { color: colors.textMuted, fontSize: 11, marginTop: 2, fontFamily: fonts.regular },
+  montant: { fontFamily: fonts.extra, fontSize: 13 },
+  supprimer: {
+    width: 26, height: 26, borderRadius: 13, backgroundColor: colors.cardSoft,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  vide: { color: colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 60, fontFamily: fonts.regular },
 });

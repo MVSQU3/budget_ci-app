@@ -1,20 +1,25 @@
-import { NavigationContainer } from '@react-navigation/native';
+import React from 'react';
+import { View } from 'react-native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
+import { useFonts } from 'expo-font';
 import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-  Poppins_800ExtraBold,
-} from '@expo-google-fonts/poppins';
-import { BudgetProvider } from './src/context/BudgetContext';
+  Figtree_400Regular,
+  Figtree_500Medium,
+  Figtree_600SemiBold,
+  Figtree_700Bold,
+  Figtree_800ExtraBold,
+} from '@expo-google-fonts/figtree';
+import { Caprasimo_400Regular } from '@expo-google-fonts/caprasimo';
+import { BudgetProvider, useBudget } from './src/context/BudgetContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { colors, fonts } from './src/theme/theme';
+import { LicenceProvider } from './src/context/LicenceContext';
+import { colors } from './src/theme/theme';
+import BarreOnglets from './src/components/BarreOnglets';
+import { Toast } from './src/components/UI';
 
 import AccueilScreen from './src/screens/AccueilScreen';
 import TransactionsScreen from './src/screens/TransactionsScreen';
@@ -29,38 +34,22 @@ import VerificationScreen from './src/screens/VerificationScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-// Icônes vectorielles de la barre d'onglets (style fin des maquettes)
-const ICONES = {
-  Accueil: ['home-outline', 'home'],
-  Transactions: ['receipt-outline', 'receipt'],
-  Budgets: ['flag-outline', 'flag'],
-  Stats: ['stats-chart-outline', 'stats-chart'],
-  Compte: ['person-outline', 'person'],
+// Fond crème du design partout, y compris pendant les transitions d'écran
+const themeNavigation = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: colors.background, card: colors.card },
 };
 
-function Onglets() {
+function Onglets({ navigation }) {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: colors.text,
-        tabBarInactiveTintColor: colors.textSecondary,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopWidth: 0,
-          elevation: 8,
-          height: 62,
-          paddingBottom: 8,
-        },
-        tabBarLabelStyle: { fontFamily: fonts.semi, fontSize: 10 },
-        tabBarIcon: ({ focused, color }) => (
-          <Ionicons
-            name={focused ? ICONES[route.name][1] : ICONES[route.name][0]}
-            size={22}
-            color={color}
-          />
-        ),
-      })}
+      screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
+      tabBar={(props) => (
+        <BarreOnglets
+          {...props}
+          onAjouter={() => navigation.navigate('Saisie', { type: 'depense' })}
+        />
+      )}
     >
       <Tab.Screen name="Accueil" component={AccueilScreen} />
       <Tab.Screen name="Transactions" component={TransactionsScreen} />
@@ -76,11 +65,17 @@ function Racine() {
   if (!charge) return null; // chargement du token stocké
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}
+    >
       {utilisateur ? (
         <>
           <Stack.Screen name="Onglets" component={Onglets} />
-          <Stack.Screen name="Saisie" component={SaisieScreen} options={{ presentation: 'modal' }} />
+          <Stack.Screen
+            name="Saisie"
+            component={SaisieScreen}
+            options={{ animation: 'slide_from_bottom' }}
+          />
         </>
       ) : (
         <>
@@ -93,25 +88,38 @@ function Racine() {
   );
 }
 
+// Le bandeau de confirmation flotte au-dessus de toute l'app
+function CoucheToast() {
+  const { toast } = useBudget();
+  return <Toast message={toast} />;
+}
+
 export default function App() {
   const [polices] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-    Poppins_800ExtraBold,
+    Figtree_400Regular,
+    Figtree_500Medium,
+    Figtree_600SemiBold,
+    Figtree_700Bold,
+    Figtree_800ExtraBold,
+    Caprasimo_400Regular,
   });
   if (!polices) return null; // splash le temps du chargement des polices
 
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <BudgetProvider>
-          <NavigationContainer>
-            <StatusBar style="dark" />
-            <Racine />
-          </NavigationContainer>
-        </BudgetProvider>
+        {/* LicenceProvider avant BudgetProvider : la sync y dépose le jeton rafraîchi */}
+        <LicenceProvider>
+          <BudgetProvider>
+            <View style={{ flex: 1, backgroundColor: colors.background }}>
+              <NavigationContainer theme={themeNavigation}>
+                <StatusBar style="dark" />
+                <Racine />
+              </NavigationContainer>
+              <CoucheToast />
+            </View>
+          </BudgetProvider>
+        </LicenceProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

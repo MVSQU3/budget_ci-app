@@ -6,7 +6,7 @@ export function formatFCFA(amount) {
 }
 
 export function formatSigned(amount, type) {
-  const prefix = type === 'revenu' ? '+ ' : '- ';
+  const prefix = type === 'revenu' ? '+ ' : '− '; // signe moins typographique, comme le design
   return prefix + formatFCFA(Math.abs(amount));
 }
 
@@ -20,6 +20,15 @@ export function formatDate(iso) {
 export function formatHeure(iso) {
   const d = new Date(iso);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+const JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+
+/** En-tête de groupe de l'historique : « Aujourd'hui » ou « vendredi 12 septembre ». */
+export function formatJour(iso) {
+  const d = new Date(iso);
+  if (d.toDateString() === new Date().toDateString()) return "Aujourd'hui";
+  return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]}`;
 }
 
 export function moisCourant(date = new Date()) {

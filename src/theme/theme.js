@@ -1,44 +1,86 @@
-// Thème clair inspiré des maquettes (fonds pastels, cartes blanches arrondies, accent sombre)
+// Système « Organic » repris du design Budget FCFA :
+// fond crème, terracotta, vert olive, cartes blanches très arrondies.
 export const colors = {
-  background: '#F4F3F8',
-  gradientTop: '#EDE9FB', // lavande pâle des headers
+  background: '#f5ead8', // crème de l'app
   card: '#FFFFFF',
-  cardSoft: '#F7F6FA',
-  text: '#1E1B2E',
-  textSecondary: '#9A96A8',
-  dark: '#221F35', // boutons principaux sombres
-  accent: '#8B7CF6', // violet
-  income: '#34C77B', // vert
-  expense: '#F65E7A', // rose/rouge
-  warning: '#F6A94A', // orange
-  blue: '#5B8DEF',
-  border: '#EEECF3',
+  cardSoft: '#f9f4ed',
+  text: '#201e1d',
+  textSecondary: '#645c50',
+  textMuted: '#82796a',
+  textFaint: '#a19786',
+  textGhost: '#c0b6a5',
+  border: '#eee7db',
+  borderFort: '#dcd3c4',
+
+  // Terracotta — accent principal
+  accent: '#c67139',
+  accentFonce: '#b2622d',
+  accentLien: '#8c491a',
+  accentClair: '#f6a06b',
+  surAccent: '#fff2eb',
+
+  // Vert olive — revenus & tontine
+  vert: '#56633f',
+  vertClair: '#8fa073',
+  vertMoyen: '#728157',
+  surVert: '#f0fae1',
+  vertBadge: '#e1eecc',
+
+  // Carte pastel
+  peche: '#ffe1d0',
+
+  toast: '#2e2b25',
+  surToast: '#f9f4ed',
+
+  // Alias conservés pour le code existant
+  income: '#56633f',
+  expense: '#b2622d',
+  warning: '#F6A94A',
+  dark: '#c67139',
 };
 
-// Dégradés pastel des maquettes (haut → bas ou diagonale)
 export const gradients = {
-  header: ['#EDE9FB', '#FBEDF2'],       // lavande → rose pâle (headers d'écrans)
-  solde: ['#E9E3FB', '#FBE9EE'],        // carte de solde (Accueil)
-  login: ['#A99BF0', '#8B7CF6'],        // bandeau violet (Connexion)
-  register: ['#F2A9C4', '#F65E7A'],     // bandeau rose (Inscription)
-  otp: ['#F6C6A0', '#F2A9C4'],          // pêche → rose (Vérification)
+  // Bandeau de connexion (radial dans le design, approximé en diagonale)
+  login: ['#f6a06b', '#c67139', '#8c491a'],
+  // Carte de solde de l'accueil
+  solde: ['#ffe1d0', '#f0fae1'],
 };
 
-export const radius = { card: 20, button: 26, chip: 14 };
+export const radius = { card: 28, carte: 22, pilule: 999, chip: 999, button: 999 };
 
-// Police Poppins (chargée dans App.js via expo-font)
+// Figtree (texte) + Caprasimo (titres display), chargées dans App.js
 export const fonts = {
-  regular: 'Poppins_400Regular',
-  medium: 'Poppins_500Medium',
-  semi: 'Poppins_600SemiBold',
-  bold: 'Poppins_700Bold',
-  extra: 'Poppins_800ExtraBold',
+  regular: 'Figtree_400Regular',
+  medium: 'Figtree_500Medium',
+  semi: 'Figtree_600SemiBold',
+  bold: 'Figtree_700Bold',
+  extra: 'Figtree_800ExtraBold',
+  display: 'Caprasimo_400Regular',
 };
 
+// Ombres du design : 0 1px 2px rgba(46,43,37,.12)
 export const shadow = {
-  shadowColor: '#1E1B2E',
-  shadowOpacity: 0.06,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 3,
+  shadowColor: '#2e2b25',
+  shadowOpacity: 0.12,
+  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 1 },
+  elevation: 1,
+};
+
+// 0 3px 10px rgba(46,43,37,.14)
+export const shadowMoyenne = {
+  shadowColor: '#2e2b25',
+  shadowOpacity: 0.14,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 3 },
+  elevation: 4,
+};
+
+// 0 12px 32px rgba(46,43,37,.3)
+export const shadowForte = {
+  shadowColor: '#2e2b25',
+  shadowOpacity: 0.3,
+  shadowRadius: 24,
+  shadowOffset: { width: 0, height: 12 },
+  elevation: 12,
 };
