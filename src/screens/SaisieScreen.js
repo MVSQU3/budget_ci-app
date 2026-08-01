@@ -14,7 +14,7 @@ export default function SaisieScreen({ route, navigation }) {
   const [montant, setMontant] = useState('');
   const [categorieId, setCategorieId] = useState(null);
   const [note, setNote] = useState('');
-  const { ajouterTransaction, budgets, stats, flash } = useBudget();
+  const { ajouterTransaction, budgets, stats, flash, lectureSeule } = useBudget();
 
   const listeCategories = type === 'depense' ? CATEGORIES : SOURCES_REVENU;
   const montantNum = Number(montant || 0);
@@ -33,7 +33,8 @@ export default function SaisieScreen({ route, navigation }) {
 
   const valider = () => {
     if (!pret) return flash('Choisis un montant et une catégorie');
-    ajouterTransaction({ type, montant: montantNum, categorieId, note });
+    // ajouterTransaction refuse et prévient déjà si l'abonnement est expiré
+    if (!ajouterTransaction({ type, montant: montantNum, categorieId, note })) return;
 
     const limite = budgets[categorieId] || 0;
     const apres = (stats.parCategorie[categorieId] || 0) + montantNum;
@@ -115,9 +116,13 @@ export default function SaisieScreen({ route, navigation }) {
 
       <View style={styles.pied}>
         <Bouton
-          title={type === 'revenu' ? 'Ajouter le revenu' : 'Ajouter la dépense'}
+          title={
+            lectureSeule
+              ? 'Abonnement expiré — saisie bloquée'
+              : type === 'revenu' ? 'Ajouter le revenu' : 'Ajouter la dépense'
+          }
           onPress={valider}
-          disabled={!pret}
+          disabled={!pret || lectureSeule}
           variante={type === 'revenu' ? 'vert' : 'accent'}
         />
       </View>

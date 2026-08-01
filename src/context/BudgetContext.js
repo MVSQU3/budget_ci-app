@@ -69,7 +69,7 @@ const BudgetContext = createContext(null);
  */
 export function BudgetProvider({ children }) {
   const { token } = useAuth();
-  const { enregistrerJeton } = useLicence();
+  const { enregistrerJeton, licence } = useLicence();
   const [transactions, setTransactions] = useState([]); // inclut les tombstones
   const [budgets, setBudgets] = useState({}); // { categorieId: { montant, majLe } }
   const [charge, setCharge] = useState(false);
@@ -221,7 +221,23 @@ export function BudgetProvider({ children }) {
     syncTimer.current = setTimeout(() => synchroniser(), 2000);
   }, [synchroniser]);
 
+  /**
+   * Verrou de lecture seule.
+   *
+   * Point de passage unique de toutes les écritures : plutôt que de compter sur
+   * chaque écran pour désactiver ses boutons, on refuse ici. Un chemin d'appel
+   * oublié dans l'interface ne peut donc pas contourner l'abonnement.
+   * Renvoie true si l'écriture est refusée.
+   */
+  const ecritureBloquee = () => {
+    if (licence.saisieAutorisee) return false;
+    flash('Abonnement expiré — renouvelle pour enregistrer à nouveau');
+    return true;
+  };
+
   const ajouterTransaction = ({ type, montant, categorieId, note }) => {
+    if (ecritureBloquee()) return false;
+
     const tx = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
       type,
@@ -262,35 +278,43 @@ export function BudgetProvider({ children }) {
         }
       }
     }
+    return true;
   };
 
   // Cotisation hebdomadaire : une transaction + l'épargne et la série qui montent
   const cotiserTontine = () => {
-    ajouterTransaction({
+    // Si la transaction est refusée, la série ne doit pas monter non plus
+    if (!ajouterTransaction({
       type: 'depense',
       montant: TONTINE.cotisation,
       categorieId: 'tontine',
       note: `cotisation ${TONTINE.jour}`,
-    });
+    })) return false;
+
     // `ajouterTransaction` a déjà crédité l'épargne : ici on ne monte que la série
     const serie = tontine.serie + 1;
     setTontine((t) => ({ ...t, serie }));
     flash(`Cotisation enregistrée · série de ${serie} semaines 🔥`);
+    return true;
   };
 
   const supprimerTransaction = (id) => {
+    if (ecritureBloquee()) return false;
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, supprime: true, majLe: Date.now() } : t)),
     );
     planifierSync();
+    return true;
   };
 
   const definirBudget = (categorieId, montant) => {
+    if (ecritureBloquee()) return false;
     setBudgets((prev) => ({
       ...prev,
       [categorieId]: { montant: Math.abs(Number(montant)) || 0, majLe: Date.now() },
     }));
     planifierSync();
+    return true;
   };
 
   // Transactions visibles (sans les tombstones)
@@ -345,6 +369,9 @@ export function BudgetProvider({ children }) {
         stats,
         tontine: tontineInfos,
         cotiserTontine,
+        // L'interface s'en sert pour désactiver ses commandes ; le refus réel
+        // se fait dans les fonctions d'écriture ci-dessus.
+        lectureSeule: !licence.saisieAutorisee,
         toast,
         flash,
         charge,

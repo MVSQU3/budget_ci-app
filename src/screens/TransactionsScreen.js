@@ -23,7 +23,7 @@ const memeJour = (a, b) =>
 
 // Historique groupé par jour, une carte blanche par transaction
 export default function TransactionsScreen() {
-  const { transactions, supprimerTransaction, flash } = useBudget();
+  const { transactions, supprimerTransaction, flash, lectureSeule } = useBudget();
   const [filtre, setFiltre] = useState('tout');
   const [dateChoisie, setDateChoisie] = useState(new Date());
   const [calendrierOuvert, setCalendrierOuvert] = useState(false);
@@ -57,8 +57,8 @@ export default function TransactionsScreen() {
   };
 
   const supprimer = (t) => {
-    supprimerTransaction(t.id);
-    flash('Transaction supprimée');
+    // supprimerTransaction prévient déjà si l'abonnement est expiré
+    if (supprimerTransaction(t.id)) flash('Transaction supprimée');
   };
 
   return (
@@ -143,9 +143,10 @@ export default function TransactionsScreen() {
               </Text>
               <TouchableOpacity
                 onPress={() => supprimer(item)}
-                style={styles.supprimer}
+                style={[styles.supprimer, lectureSeule && { opacity: 0.35 }]}
                 activeOpacity={0.7}
                 accessibilityLabel="Supprimer la transaction"
+                accessibilityState={{ disabled: lectureSeule }}
               >
                 <Ionicons name="trash" size={13} color={colors.accentLien} />
               </TouchableOpacity>

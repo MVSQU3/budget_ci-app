@@ -1,6 +1,6 @@
 // Client API vers le backend NestJS.
 // ⚠️ Sur téléphone physique, remplace localhost par l'IP de ton PC (ex. http://192.168.1.10:3000)
-export const API_URL = 'http://192.168.1.71:3002';
+export const API_URL = 'http://192.168.56.1:3002';
 
 const DELAI_MS = 15000; // au-delà, on considère le serveur injoignable
 

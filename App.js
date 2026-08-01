@@ -41,14 +41,20 @@ const themeNavigation = {
 };
 
 function Onglets({ navigation }) {
+  const { lectureSeule, flash } = useBudget();
+
+  // En lecture seule on n'ouvre pas l'écran de saisie pour le voir refuser :
+  // on explique tout de suite pourquoi c'est bloqué.
+  const ajouter = () =>
+    lectureSeule
+      ? flash('Abonnement expiré — renouvelle pour enregistrer à nouveau')
+      : navigation.navigate('Saisie', { type: 'depense' });
+
   return (
     <Tab.Navigator
       screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: colors.background } }}
       tabBar={(props) => (
-        <BarreOnglets
-          {...props}
-          onAjouter={() => navigation.navigate('Saisie', { type: 'depense' })}
-        />
+        <BarreOnglets {...props} onAjouter={ajouter} lectureSeule={lectureSeule} />
       )}
     >
       <Tab.Screen name="Accueil" component={AccueilScreen} />

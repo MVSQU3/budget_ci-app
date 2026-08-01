@@ -8,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  *
  * ⚠ À remplacer par la clé de production avant publication.
  */
-const CLE_PUBLIQUE_B64 = 'YkV/k0cGCakhT+hbo5wQH8rMtho9K3jUvBncMh6ax1I=';
+const CLE_PUBLIQUE_B64 = 'TUYt8Y3cKyllFmry2uYXzfDZrTb9+/3dqeJ2jqED75k=';
 
 export const CLE_HORLOGE = '@budget_fcfa_horloge'; // dernière date vue (anti-recul)
 

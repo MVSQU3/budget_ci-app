@@ -8,7 +8,7 @@ import { TONTINE } from '../context/BudgetContext';
 import { formatFCFA } from '../utils/format';
 
 /** Feuille du bas « Tontine du quartier » : épargne, jauge, paliers, cotisation. */
-export default function FeuilleTontine({ visible, onClose, tontine, onCotiser }) {
+export default function FeuilleTontine({ visible, onClose, tontine, onCotiser, lectureSeule }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -69,8 +69,13 @@ export default function FeuilleTontine({ visible, onClose, tontine, onCotiser })
             </View>
 
             <Bouton
-              title="Enregistrer la cotisation de cette semaine"
+              title={
+                lectureSeule
+                  ? 'Abonnement expiré — saisie bloquée'
+                  : 'Enregistrer la cotisation de cette semaine'
+              }
               onPress={onCotiser}
+              disabled={lectureSeule}
               style={{ marginTop: 18 }}
             />
           </ScrollView>

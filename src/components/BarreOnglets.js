@@ -17,7 +17,7 @@ const ICONES = {
  * Barre d'onglets du design : bandeau blanc de 88 px à coins hauts arrondis (30),
  * surmonté du bouton d'ajout terracotta centré.
  */
-export default function BarreOnglets({ state, navigation, onAjouter }) {
+export default function BarreOnglets({ state, navigation, onAjouter, lectureSeule }) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -58,15 +58,28 @@ export default function BarreOnglets({ state, navigation, onAjouter }) {
         })}
       </View>
 
-      {/* Bouton d'ajout central, posé au-dessus de la barre */}
+      {/* Bouton d'ajout central, posé au-dessus de la barre.
+          En lecture seule il reste visible mais grisé et porte un cadenas :
+          le masquer laisserait croire à un bug plutôt qu'à un abonnement échu. */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: 62 + insets.bottom }]}
+        style={[
+          styles.fab,
+          { bottom: 62 + insets.bottom },
+          lectureSeule && styles.fabVerrouille,
+        ]}
         onPress={onAjouter}
         activeOpacity={0.85}
         accessibilityRole="button"
-        accessibilityLabel="Ajouter une dépense"
+        accessibilityLabel={
+          lectureSeule ? 'Saisie bloquée — abonnement expiré' : 'Ajouter une dépense'
+        }
+        accessibilityState={{ disabled: lectureSeule }}
       >
-        <Ionicons name="add" size={30} color={colors.surAccent} />
+        <Ionicons
+          name={lectureSeule ? 'lock-closed' : 'add'}
+          size={lectureSeule ? 24 : 30}
+          color={colors.surAccent}
+        />
       </TouchableOpacity>
     </View>
   );
@@ -105,4 +118,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 12,
   },
+  fabVerrouille: { backgroundColor: colors.textFaint, shadowOpacity: 0.15 },
 });

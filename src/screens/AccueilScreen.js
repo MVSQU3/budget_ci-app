@@ -6,6 +6,7 @@ import { colors, shadow, shadowMoyenne, fonts } from '../theme/theme';
 import { Card, GradientCard, ScreenTitle, TitreSection, ActionRonde } from '../components/UI';
 import AnneauTontine from '../components/AnneauTontine';
 import FeuilleTontine from '../components/FeuilleTontine';
+import BandeauLicence from '../components/BandeauLicence';
 import { useBudget, getCategorie } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
 import { formatFCFA, formatSigned, formatHeure, moisCourant } from '../utils/format';
@@ -18,10 +19,16 @@ const salutation = () => {
 };
 
 export default function AccueilScreen({ navigation }) {
-  const { stats, transactions, tontine, cotiserTontine } = useBudget();
+  const { stats, transactions, tontine, cotiserTontine, lectureSeule, flash } = useBudget();
   const { utilisateur } = useAuth();
   const [tontineOuverte, setTontineOuverte] = useState(false);
   const recentes = transactions.slice(0, 5);
+
+  // Consulter reste toujours possible ; seule la saisie est verrouillée
+  const ouvrirSaisie = (type) =>
+    lectureSeule
+      ? flash('Abonnement expiré — renouvelle pour enregistrer à nouveau')
+      : navigation.navigate('Saisie', { type });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -40,18 +47,24 @@ export default function AccueilScreen({ navigation }) {
           </View>
         </View>
 
+        <BandeauLicence style={{ marginTop: 16 }} />
+
         {/* Solde total + raccourcis */}
         <GradientCard style={{ marginTop: 18 }}>
           <Text style={styles.soldeLabel}>Solde total</Text>
           <Text style={styles.soldeMontant}>{formatFCFA(stats.soldeTotal)}</Text>
           <View style={styles.actionsRow}>
             <ActionRonde
-              icone="arrow-up" label="Dépense" color={colors.accentFonce}
-              onPress={() => navigation.navigate('Saisie', { type: 'depense' })}
+              icone={lectureSeule ? 'lock-closed' : 'arrow-up'}
+              label="Dépense"
+              color={lectureSeule ? colors.textFaint : colors.accentFonce}
+              onPress={() => ouvrirSaisie('depense')}
             />
             <ActionRonde
-              icone="arrow-down" label="Revenu" color={colors.vert}
-              onPress={() => navigation.navigate('Saisie', { type: 'revenu' })}
+              icone={lectureSeule ? 'lock-closed' : 'arrow-down'}
+              label="Revenu"
+              color={lectureSeule ? colors.textFaint : colors.vert}
+              onPress={() => ouvrirSaisie('revenu')}
             />
             <ActionRonde
               icone="flag" label="Budgets" color={colors.vertClair}
@@ -147,6 +160,7 @@ export default function AccueilScreen({ navigation }) {
         visible={tontineOuverte}
         onClose={() => setTontineOuverte(false)}
         tontine={tontine}
+        lectureSeule={lectureSeule}
         onCotiser={() => {
           setTontineOuverte(false);
           cotiserTontine();

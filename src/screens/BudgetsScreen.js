@@ -6,22 +6,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, shadow, shadowForte, fonts } from '../theme/theme';
 import { ScreenTitle, Bouton, Card } from '../components/UI';
+import BandeauLicence from '../components/BandeauLicence';
 import { useBudget, CATEGORIES } from '../context/BudgetContext';
 import { formatFCFA, moisCourant } from '../utils/format';
 
 export default function BudgetsScreen() {
-  const { budgets, stats, definirBudget, flash } = useBudget();
+  const { budgets, stats, definirBudget, flash, lectureSeule } = useBudget();
   const [modal, setModal] = useState(null); // catégorie en cours d'édition
   const [saisie, setSaisie] = useState('');
 
   const ouvrir = (cat) => {
+    // Inutile d'ouvrir un formulaire qui refusera d'enregistrer
+    if (lectureSeule) {
+      return flash('Abonnement expiré — renouvelle pour modifier tes budgets');
+    }
     setSaisie(budgets[cat.id] ? String(budgets[cat.id]) : '');
     setModal(cat);
   };
 
   const enregistrer = () => {
-    definirBudget(modal.id, saisie);
-    flash(`Budget « ${modal.nom} » mis à jour`);
+    // definirBudget prévient déjà si l'abonnement est expiré
+    if (definirBudget(modal.id, saisie)) flash(`Budget « ${modal.nom} » mis à jour`);
     setModal(null);
   };
 
@@ -30,6 +35,8 @@ export default function BudgetsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <ScreenTitle>Budgets</ScreenTitle>
         <Text style={styles.sousTitre}>Limites mensuelles — {moisCourant()}</Text>
+
+        <BandeauLicence style={{ marginTop: 14 }} />
 
         <View style={{ gap: 10, marginTop: 16 }}>
           {CATEGORIES.map((cat) => {
