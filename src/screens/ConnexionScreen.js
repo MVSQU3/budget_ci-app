@@ -56,7 +56,7 @@ export default function ConnexionScreen({ navigation }) {
             <View style={styles.heroTexte}>
               <Text style={styles.marque}>Budget{'\n'}FCFA</Text>
               <Text style={styles.accroche}>
-                Suis tes dépenses, tiens ta tontine, garde ton mois en équilibre.
+                Suis tes dépenses, tiens tes budgets, garde ton mois en équilibre.
               </Text>
             </View>
           </LinearGradient>

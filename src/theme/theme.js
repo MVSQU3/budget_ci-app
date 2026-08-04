@@ -19,7 +19,7 @@ export const colors = {
   accentClair: '#f6a06b',
   surAccent: '#fff2eb',
 
-  // Vert olive — revenus & tontine
+  // Vert olive — revenus
   vert: '#56633f',
   vertClair: '#8fa073',
   vertMoyen: '#728157',

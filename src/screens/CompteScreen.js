@@ -17,25 +17,27 @@ const NOTIFS = [
   { cle: 'quotidien', label: 'Rappel de saisie (20h)' },
   { cle: 'hebdo', label: 'Résumé hebdo (dim. 19h)' },
   { cle: 'mensuel', label: 'Bilan mensuel (1er, 9h)' },
-  { cle: 'tontine', label: 'Rappel tontine (sam. 9h)' },
   { cle: 'sync', label: 'Sync en retard (3 jours)' },
 ];
 
 export default function CompteScreen() {
   const {
-    transactions, stats, tontine, synchroniser, syncEnCours, derniereSync, syncErreur,
+    transactions, stats, synchroniser, syncEnCours, derniereSync, syncErreur,
     notifPrefs, definirNotifPref,
   } = useBudget();
   const { utilisateur, deconnexion } = useAuth();
   const { licence } = useLicence();
 
-  // Une panne de sauvegarde doit se voir : on distingue « hors ligne » d'une vraie erreur
+  // Une panne de sauvegarde doit se voir. « reseau » = vraiment hors ligne (normal) ;
+  // tout le reste, y compris un serveur injoignable, est une anomalie à signaler.
   const enErreur = syncErreur && syncErreur.type !== 'reseau';
   const texteSync = syncEnCours
     ? 'Synchronisation en cours…'
     : enErreur
     ? syncErreur.type === 'auth'
       ? 'Session expirée — reconnecte-toi pour sauvegarder'
+      : syncErreur.type === 'injoignable'
+      ? syncErreur.message
       : `Échec : ${syncErreur.message}`
     : syncErreur?.type === 'reseau'
     ? derniereSync
@@ -117,7 +119,6 @@ export default function CompteScreen() {
           <Ligne label="Transactions enregistrées" valeur={String(transactions.length)} />
           <Ligne label="Solde total" valeur={formatFCFA(stats.soldeTotal)} />
           <Ligne label="Dépenses ce mois" valeur={formatFCFA(stats.depenses)} />
-          <Ligne label="Épargne tontine" valeur={formatFCFA(tontine.epargne)} />
         </Card>
 
         {/* Notifications */}

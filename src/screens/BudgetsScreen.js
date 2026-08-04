@@ -11,7 +11,7 @@ import { useBudget, CATEGORIES } from '../context/BudgetContext';
 import { formatFCFA, moisCourant } from '../utils/format';
 
 export default function BudgetsScreen() {
-  const { budgets, stats, definirBudget, flash, lectureSeule } = useBudget();
+  const { budgets, stats, definirBudget, supprimerBudget, flash, lectureSeule } = useBudget();
   const [modal, setModal] = useState(null); // catégorie en cours d'édition
   const [saisie, setSaisie] = useState('');
 
@@ -25,8 +25,15 @@ export default function BudgetsScreen() {
   };
 
   const enregistrer = () => {
+    // Champ vidé = suppression : c'est la même chose qu'un montant nul
+    if (!Number(saisie)) return supprimer();
     // definirBudget prévient déjà si l'abonnement est expiré
     if (definirBudget(modal.id, saisie)) flash(`Budget « ${modal.nom} » mis à jour`);
+    setModal(null);
+  };
+
+  const supprimer = () => {
+    if (supprimerBudget(modal.id)) flash(`Budget « ${modal.nom} » supprimé`);
     setModal(null);
   };
 
@@ -110,6 +117,14 @@ export default function BudgetsScreen() {
               autoFocus
             />
             <Bouton title="Enregistrer" onPress={enregistrer} style={{ paddingVertical: 15 }} />
+
+            {/* Proposé seulement si un budget existe : sinon il n'y a rien à retirer */}
+            {!!budgets[modal?.id] && (
+              <TouchableOpacity onPress={supprimer}>
+                <Text style={styles.supprimer}>Supprimer ce budget</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity onPress={() => setModal(null)}>
               <Text style={styles.annuler}>Annuler</Text>
             </TouchableOpacity>
@@ -149,4 +164,5 @@ const styles = StyleSheet.create({
     fontSize: 15, color: colors.text, fontFamily: fonts.semi, ...shadow,
   },
   annuler: { textAlign: 'center', color: colors.textSecondary, fontSize: 13, fontFamily: fonts.bold },
+  supprimer: { textAlign: 'center', color: colors.accentFonce, fontSize: 13, fontFamily: fonts.bold },
 });

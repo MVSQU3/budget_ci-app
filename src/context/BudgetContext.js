@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { memeMois, formatFCFA } from '../utils/format';
 import { api } from '../utils/api';
@@ -8,25 +9,6 @@ import { initNotifications, notifier, replanifierRecurrentes } from '../utils/no
 
 const STORAGE_KEY = '@budget_fcfa_v2';
 const NOTIF_KEY = '@budget_fcfa_notifs';
-const TONTINE_KEY = '@budget_fcfa_tontine';
-
-// Tontine — objectif d'épargne suivi (anneau, série, paliers)
-export const TONTINE = {
-  nom: 'Tontine',
-  objectif: 0,
-  cotisation: 0,
-  membres: 12,
-  jour: 'samedi',
-  prochainTour: 'samedi 12 septembre',
-};
-
-export const PALIERS_TONTINE = [
-  { titre: 'Premier tour bouclé', sous: '6 cotisations · 90 000 FCFA', seuil: 90000 },
-  { titre: 'Moitié de l’objectif', sous: '210 000 FCFA', seuil: 210000 },
-  { titre: 'Fonds d’urgence', sous: '300 000 FCFA', seuil: 300000 },
-  { titre: 'Objectif annuel', sous: '420 000 FCFA', seuil: 420000 },
-];
-
 // Préférences de notifications (toutes activées par défaut)
 export const NOTIF_DEFAUT = {
   depassement: true, // budget dépassé (immédiat)
@@ -34,7 +16,6 @@ export const NOTIF_DEFAUT = {
   quotidien: true,   // rappel de saisie à 20h
   hebdo: true,       // résumé le dimanche à 19h
   mensuel: true,     // bilan le 1er du mois à 9h
-  tontine: true,     // rappel épargne le samedi à 9h
   sync: true,        // données non synchronisées depuis 3 jours
 };
 
@@ -78,11 +59,18 @@ export function BudgetProvider({ children }) {
   // null = tout va bien ; sinon { type: 'reseau' | 'serveur' | 'auth', statut, message }
   const [syncErreur, setSyncErreur] = useState(null);
   const [notifPrefs, setNotifPrefs] = useState(NOTIF_DEFAUT);
-  const [tontine, setTontine] = useState({ epargne: 0, serie: 0 });
   const [toast, setToast] = useState(null);
   const toastTimer = useRef(null);
   const syncTimer = useRef(null);
   const syncNotifie = useRef(false); // pour ne notifier la sync en retard qu'une fois
+
+  // Miroirs de l'état lus par `synchroniser`. Ils garantissent qu'un envoi
+  // programmé pousse ce qui est vrai au moment où il part, et non ce qui l'était
+  // au moment où il a été programmé.
+  const transactionsRef = useRef(transactions);
+  const budgetsRef = useRef(budgets);
+  transactionsRef.current = transactions;
+  budgetsRef.current = budgets;
 
   // Chargement local
   useEffect(() => {
@@ -97,8 +85,6 @@ export function BudgetProvider({ children }) {
         }
         const rawNotifs = await AsyncStorage.getItem(NOTIF_KEY);
         if (rawNotifs) setNotifPrefs({ ...NOTIF_DEFAUT, ...JSON.parse(rawNotifs) });
-        const rawTontine = await AsyncStorage.getItem(TONTINE_KEY);
-        if (rawTontine) setTontine(JSON.parse(rawTontine));
         await initNotifications(); // demande la permission
       } catch (e) {
         console.warn('Erreur de chargement', e);
@@ -124,12 +110,6 @@ export function BudgetProvider({ children }) {
     replanifierRecurrentes(notifPrefs);
   }, [notifPrefs, charge]);
 
-  // Sauvegarde de la tontine
-  useEffect(() => {
-    if (!charge) return;
-    AsyncStorage.setItem(TONTINE_KEY, JSON.stringify(tontine)).catch(() => {});
-  }, [tontine, charge]);
-
   const definirNotifPref = (cle, valeur) =>
     setNotifPrefs((prev) => ({ ...prev, [cle]: valeur }));
 
@@ -152,20 +132,42 @@ export function BudgetProvider({ children }) {
     if (!token) return;
     setSyncEnCours(true);
     try {
-      const budgetsListe = Object.entries(budgets).map(([categorieId, b]) => ({
+      // On lit l'état via des refs, jamais via la capture du closure : `planifierSync`
+      // programme un envoi 2 s plus tard, et cette capture-là daterait d'AVANT la
+      // modification. La sync poussait alors l'ancienne valeur, le serveur la
+      // renvoyait, et l'adoption de la réponse annulait la suppression qu'on venait
+      // de faire — une suppression de budget ne « tenait » jamais.
+      const budgetsCourants = budgetsRef.current;
+      const budgetsListe = Object.entries(budgetsCourants).map(([categorieId, b]) => ({
         categorieId,
         montant: b.montant,
         majLe: b.majLe,
       }));
-      const res = await api.sync(transactions, budgetsListe, token);
+      const txPoussees = transactionsRef.current;
+      const res = await api.sync(txPoussees, budgetsListe, token);
 
-      // L'état serveur est l'état fusionné : on l'adopte tel quel
-      setTransactions(res.transactions);
+      // L'état serveur est l'état fusionné : on l'adopte, en préservant ce qui a
+      // été modifié pendant que la requête était en vol. Sans ça, supprimer une
+      // ligne pile au moment d'une sync verrait la réponse écraser la suppression.
+      const majPoussee = new Map(budgetsListe.map((b) => [b.categorieId, b.majLe]));
       const nouveauxBudgets = {};
       res.budgets.forEach((b) => {
         nouveauxBudgets[b.categorieId] = { montant: b.montant, majLe: b.majLe };
       });
+      Object.entries(budgetsRef.current).forEach(([id, local]) => {
+        const pousse = majPoussee.get(id);
+        if (pousse === undefined || local.majLe > pousse) nouveauxBudgets[id] = local;
+      });
       setBudgets(nouveauxBudgets);
+
+      const txMajPoussee = new Map(txPoussees.map((t) => [t.id, t.majLe]));
+      const parId = new Map(res.transactions.map((t) => [t.id, t]));
+      transactionsRef.current.forEach((local) => {
+        const pousse = txMajPoussee.get(local.id);
+        if (pousse === undefined || local.majLe > pousse) parId.set(local.id, local);
+      });
+      setTransactions([...parId.values()]);
+
       setDerniereSync(res.syncLe);
 
       // Chaque sync réussie rafraîchit la licence et repousse la tolérance hors ligne
@@ -176,9 +178,19 @@ export function BudgetProvider({ children }) {
       if (manuelle) flash('Données synchronisées');
     } catch (e) {
       if (e.reseau) {
-        // Vraiment hors ligne : cas nominal, on réessaiera plus tard
-        setSyncErreur({ type: 'reseau', message: e.message });
-        if (manuelle) flash('Hors ligne — la sauvegarde se fera au retour du réseau');
+        // Sans connexion : cas nominal. Serveur injoignable malgré une connexion :
+        // anomalie de configuration, il faut le dire plutôt que crier « hors ligne ».
+        setSyncErreur({
+          type: e.horsLigne ? 'reseau' : 'injoignable',
+          message: e.message,
+        });
+        if (manuelle) {
+          flash(
+            e.horsLigne
+              ? 'Hors ligne — la sauvegarde se fera au retour du réseau'
+              : 'Serveur injoignable — vérifie son adresse',
+          );
+        }
 
         const TROIS_JOURS = 3 * 24 * 60 * 60 * 1000;
         if (
@@ -207,13 +219,31 @@ export function BudgetProvider({ children }) {
     } finally {
       setSyncEnCours(false);
     }
-  }, [token, transactions, budgets, notifPrefs.sync, derniereSync, flash, enregistrerJeton]);
+    // `transactions` et `budgets` sont volontairement absents des dépendances :
+    // ils sont lus via des refs, ce qui rend cette fonction stable et évite qu'un
+    // envoi programmé n'emporte une photo périmée de l'état.
+  }, [token, notifPrefs.sync, derniereSync, flash, enregistrerJeton]);
 
   // Sync au démarrage / à la connexion
   useEffect(() => {
     if (charge && token) synchroniser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [charge, token]);
+
+  /**
+   * Reprise au retour au premier plan.
+   *
+   * Sans ça, un échec de sync laisse l'app affichée « hors ligne » jusqu'au
+   * prochain redémarrage ou à la prochaine saisie : le réseau revient, mais
+   * rien ne le remarque. On retente donc dès que l'utilisateur revient sur l'app.
+   */
+  useEffect(() => {
+    if (!charge || !token) return;
+    const abonnement = AppState.addEventListener('change', (etat) => {
+      if (etat === 'active') synchroniser();
+    });
+    return () => abonnement.remove();
+  }, [charge, token, synchroniser]);
 
   // Sync différée après chaque modification (regroupe les changements rapprochés)
   const planifierSync = useCallback(() => {
@@ -251,11 +281,6 @@ export function BudgetProvider({ children }) {
     setTransactions((prev) => [tx, ...prev]);
     planifierSync();
 
-    // Une dépense « Tontine / Épargne » alimente l'objectif d'épargne
-    if (type === 'depense' && categorieId === 'tontine') {
-      setTontine((t) => ({ ...t, epargne: t.epargne + tx.montant }));
-    }
-
     // Alertes de budget (immédiates) : seuil de 80 % et dépassement
     if (type === 'depense') {
       const limite = budgets[categorieId]?.montant || 0;
@@ -281,23 +306,6 @@ export function BudgetProvider({ children }) {
     return true;
   };
 
-  // Cotisation hebdomadaire : une transaction + l'épargne et la série qui montent
-  const cotiserTontine = () => {
-    // Si la transaction est refusée, la série ne doit pas monter non plus
-    if (!ajouterTransaction({
-      type: 'depense',
-      montant: TONTINE.cotisation,
-      categorieId: 'tontine',
-      note: `cotisation ${TONTINE.jour}`,
-    })) return false;
-
-    // `ajouterTransaction` a déjà crédité l'épargne : ici on ne monte que la série
-    const serie = tontine.serie + 1;
-    setTontine((t) => ({ ...t, serie }));
-    flash(`Cotisation enregistrée · série de ${serie} semaines 🔥`);
-    return true;
-  };
-
   const supprimerTransaction = (id) => {
     if (ecritureBloquee()) return false;
     setTransactions((prev) =>
@@ -307,6 +315,15 @@ export function BudgetProvider({ children }) {
     return true;
   };
 
+  /**
+   * Définit le budget d'une catégorie. Un montant nul vaut suppression.
+   *
+   * L'entrée à 0 est volontairement conservée dans l'état local : c'est elle
+   * qui, poussée avec un `majLe` récent, dit au serveur d'effacer la ligne.
+   * La retirer tout de suite ferait revenir l'ancien montant à la sync suivante.
+   * `budgetsSimples` la masque de l'interface, et l'adoption de l'état serveur
+   * la fait disparaître une fois la suppression confirmée.
+   */
   const definirBudget = (categorieId, montant) => {
     if (ecritureBloquee()) return false;
     setBudgets((prev) => ({
@@ -316,6 +333,9 @@ export function BudgetProvider({ children }) {
     planifierSync();
     return true;
   };
+
+  /** Supprime le budget d'une catégorie (montant nul = suppression). */
+  const supprimerBudget = (categorieId) => definirBudget(categorieId, 0);
 
   // Transactions visibles (sans les tombstones)
   const visibles = useMemo(
@@ -348,27 +368,12 @@ export function BudgetProvider({ children }) {
     return { revenus, depenses, solde: revenus - depenses, soldeTotal, parCategorie };
   }, [visibles]);
 
-  // Données dérivées de la tontine pour l'anneau et les paliers
-  const tontineInfos = useMemo(() => {
-    const ratio = Math.min(tontine.epargne / TONTINE.objectif, 1);
-    return {
-      ...tontine,
-      objectif: TONTINE.objectif,
-      ratio,
-      pourcentage: Math.round(ratio * 100),
-      reste: Math.max(TONTINE.objectif - tontine.epargne, 0),
-      paliers: PALIERS_TONTINE.map((p) => ({ ...p, atteint: tontine.epargne >= p.seuil })),
-    };
-  }, [tontine]);
-
   return (
     <BudgetContext.Provider
       value={{
         transactions: visibles,
         budgets: budgetsSimples,
         stats,
-        tontine: tontineInfos,
-        cotiserTontine,
         // L'interface s'en sert pour désactiver ses commandes ; le refus réel
         // se fait dans les fonctions d'écriture ci-dessus.
         lectureSeule: !licence.saisieAutorisee,
@@ -382,6 +387,7 @@ export function BudgetProvider({ children }) {
         ajouterTransaction,
         supprimerTransaction,
         definirBudget,
+        supprimerBudget,
         notifPrefs,
         definirNotifPref,
       }}

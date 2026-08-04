@@ -88,15 +88,6 @@ export async function replanifierRecurrentes(prefs) {
       });
     }
 
-    if (prefs.tontine) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Tontine / Épargne',
-          body: "C'est le jour de ton versement d'épargne 💰",
-        },
-        trigger: { type: 'weekly', weekday: 7, hour: 9, minute: 0 }, // samedi 9h
-      });
-    }
   } catch (e) {
     // Permissions refusées ou indisponible : on ignore silencieusement
   }

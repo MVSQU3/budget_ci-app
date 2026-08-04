@@ -1,11 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, shadow, shadowMoyenne, fonts } from '../theme/theme';
+import { colors, shadow, fonts } from '../theme/theme';
 import { Card, GradientCard, ScreenTitle, TitreSection, ActionRonde } from '../components/UI';
-import AnneauTontine from '../components/AnneauTontine';
-import FeuilleTontine from '../components/FeuilleTontine';
 import BandeauLicence from '../components/BandeauLicence';
 import { useBudget, getCategorie } from '../context/BudgetContext';
 import { useAuth } from '../context/AuthContext';
@@ -19,9 +17,8 @@ const salutation = () => {
 };
 
 export default function AccueilScreen({ navigation }) {
-  const { stats, transactions, tontine, cotiserTontine, lectureSeule, flash } = useBudget();
+  const { stats, transactions, lectureSeule, flash } = useBudget();
   const { utilisateur } = useAuth();
-  const [tontineOuverte, setTontineOuverte] = useState(false);
   const recentes = transactions.slice(0, 5);
 
   // Consulter reste toujours possible ; seule la saisie est verrouillée
@@ -72,27 +69,6 @@ export default function AccueilScreen({ navigation }) {
             />
           </View>
         </GradientCard>
-
-        {/* Tontine : objectif suivi, en 2ᵉ place comme dans le design */}
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => setTontineOuverte(true)}
-          style={styles.tontine}
-        >
-          <View style={styles.tontineBlob} pointerEvents="none" />
-          <AnneauTontine ratio={tontine.ratio} pourcentage={tontine.pourcentage} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.tontineSurtitre}>Tontine du quartier</Text>
-            <Text style={styles.tontineMontant}>{formatFCFA(tontine.epargne)}</Text>
-            <Text style={styles.tontineDetail}>
-              sur {formatFCFA(tontine.objectif)} · {formatFCFA(tontine.reste)} restants
-            </Text>
-            <View style={styles.serie}>
-              <Ionicons name="flame" size={13} color={colors.accentClair} />
-              <Text style={styles.serieTexte}>{tontine.serie} semaines d'affilée</Text>
-            </View>
-          </View>
-        </TouchableOpacity>
 
         {/* Résumé du mois */}
         <View style={styles.enteteSection}>
@@ -155,17 +131,6 @@ export default function AccueilScreen({ navigation }) {
           )}
         </Card>
       </ScrollView>
-
-      <FeuilleTontine
-        visible={tontineOuverte}
-        onClose={() => setTontineOuverte(false)}
-        tontine={tontine}
-        lectureSeule={lectureSeule}
-        onCotiser={() => {
-          setTontineOuverte(false);
-          cotiserTontine();
-        }}
-      />
     </SafeAreaView>
   );
 }
@@ -187,28 +152,6 @@ const styles = StyleSheet.create({
   soldeLabel: { fontSize: 12.5, fontFamily: fonts.bold, color: colors.textSecondary },
   soldeMontant: { fontFamily: fonts.display, fontSize: 34, color: colors.text, marginTop: 4 },
   actionsRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
-
-  tontine: {
-    marginTop: 14, borderRadius: 28, padding: 20,
-    backgroundColor: colors.vert, flexDirection: 'row', gap: 18,
-    alignItems: 'center', overflow: 'hidden', ...shadowMoyenne,
-  },
-  tontineBlob: {
-    position: 'absolute', width: 170, height: 170, borderRadius: 85,
-    backgroundColor: 'rgba(240,250,225,0.07)', bottom: -90, right: -40,
-  },
-  tontineSurtitre: {
-    fontSize: 11.5, letterSpacing: 0.7, textTransform: 'uppercase',
-    color: colors.surVert, opacity: 0.8, fontFamily: fonts.bold,
-  },
-  tontineMontant: { fontFamily: fonts.display, fontSize: 19, color: colors.surVert, marginTop: 3 },
-  tontineDetail: { fontSize: 12, color: colors.surVert, opacity: 0.85, marginTop: 3, fontFamily: fonts.regular },
-  serie: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 9,
-    alignSelf: 'flex-start', borderRadius: 999,
-    backgroundColor: 'rgba(240,250,225,0.16)', paddingHorizontal: 11, paddingVertical: 5,
-  },
-  serieTexte: { fontSize: 11.5, color: colors.surVert, fontFamily: fonts.bold },
 
   enteteSection: {
     flexDirection: 'row', alignItems: 'baseline',
