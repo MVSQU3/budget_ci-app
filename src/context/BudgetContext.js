@@ -316,6 +316,44 @@ export function BudgetProvider({ children }) {
   };
 
   /**
+   * Efface toutes les transactions et tous les budgets, localement et sur le serveur.
+   *
+   * On passe par les mêmes marqueurs de suppression que la suppression unitaire,
+   * et non par un vidage du stockage : vider AsyncStorage ne toucherait pas à
+   * l'état en mémoire (que les effets de sauvegarde réécriraient aussitôt), et
+   * surtout le serveur n'apprendrait jamais l'effacement — il rapatrierait tout
+   * à la synchronisation suivante.
+   *
+   * Le compte, l'abonnement et les préférences de notification sont conservés :
+   * l'action ne porte que sur les données financières, comme son libellé l'indique.
+   *
+   * Volontairement non soumis au verrou de lecture seule : effacer ses propres
+   * données doit rester possible même quand l'abonnement a expiré.
+   */
+  const effacerToutesLesDonnees = async () => {
+    const maintenant = Date.now();
+
+    const txEffacees = transactionsRef.current.map((t) =>
+      t.supprime ? t : { ...t, supprime: true, majLe: maintenant },
+    );
+    const budgetsEffaces = {};
+    Object.keys(budgetsRef.current).forEach((id) => {
+      budgetsEffaces[id] = { montant: 0, majLe: maintenant };
+    });
+
+    // Les refs sont mises à jour tout de suite : `synchroniser` les lit, et elles
+    // ne seraient rafraîchies qu'au rendu suivant, après l'envoi.
+    transactionsRef.current = txEffacees;
+    budgetsRef.current = budgetsEffaces;
+    setTransactions(txEffacees);
+    setBudgets(budgetsEffaces);
+
+    await synchroniser();
+    flash('Toutes les données ont été effacées');
+    return true;
+  };
+
+  /**
    * Définit le budget d'une catégorie. Un montant nul vaut suppression.
    *
    * L'entrée à 0 est volontairement conservée dans l'état local : c'est elle
@@ -388,6 +426,7 @@ export function BudgetProvider({ children }) {
         supprimerTransaction,
         definirBudget,
         supprimerBudget,
+        effacerToutesLesDonnees,
         notifPrefs,
         definirNotifPref,
       }}

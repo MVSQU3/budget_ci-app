@@ -1,10 +1,17 @@
 import Constants from 'expo-constants';
 import * as Network from 'expo-network';
 
-const PORT_API = 3002;
+/**
+ * Port de l'API et URL complète, pilotés par l'environnement.
+ *
+ * Écrire le port en dur ici le dupliquait avec le `PORT` du `.env` du serveur :
+ * changer l'un sans l'autre rendait l'app « injoignable » sans raison visible.
+ * Les variables `EXPO_PUBLIC_*` sont injectées par Expo au moment du bundle.
+ */
+const PORT_API = Number(process.env.EXPO_PUBLIC_API_PORT) || 3001;
 
-/** URL du serveur en production. À renseigner avant publication. */
-const URL_PRODUCTION = null;
+/** URL complète du serveur. À renseigner pour la production. */
+const URL_PRODUCTION = process.env.EXPO_PUBLIC_API_URL || null;
 
 /**
  * En développement, on déduit l'adresse du serveur de celle de Metro.

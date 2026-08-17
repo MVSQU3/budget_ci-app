@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts } from '../theme/theme';
 import { ScreenTitle, Card, Interrupteur } from '../components/UI';
@@ -23,6 +22,7 @@ const NOTIFS = [
 export default function CompteScreen() {
   const {
     transactions, stats, synchroniser, syncEnCours, derniereSync, syncErreur,
+    effacerToutesLesDonnees,
     notifPrefs, definirNotifPref,
   } = useBudget();
   const { utilisateur, deconnexion } = useAuth();
@@ -71,17 +71,17 @@ export default function CompteScreen() {
   const effacerDonnees = () => {
     Alert.alert(
       'Tout effacer',
-      'Supprimer toutes les transactions et budgets ? Cette action est irréversible.',
+      `Supprimer définitivement tes ${transactions.length} transaction(s) et tous tes budgets, ` +
+        'sur cet appareil comme sur le serveur ? Ton compte et ton abonnement sont conservés. ' +
+        'Cette action est irréversible.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Effacer', style: 'destructive',
-          onPress: async () => {
-            await AsyncStorage.clear();
-            Alert.alert('Fait', "Redémarre l'application pour repartir de zéro.");
-          },
+          text: 'Effacer',
+          style: 'destructive',
+          onPress: () => effacerToutesLesDonnees(),
         },
-      ]
+      ],
     );
   };
 
